@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Habit, Priority, Reflection } from "@/lib/types";
+import { Habit, Priority, Reflection, CountdownEvent, EVENT_CATEGORIES, VISION_CATEGORIES } from "@/lib/types";
 import {
   getHabits,
   getCompletions,
@@ -10,6 +10,8 @@ import {
   getReflections,
   getCompletionRate,
   getWorkouts,
+  getNextEvent,
+  getDaysUntil,
 } from "@/lib/storage";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,6 +24,7 @@ import {
   CheckCircle2,
   Circle,
   TrendingUp,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -32,6 +35,7 @@ export default function Home() {
   const [reflections, setReflections] = useState<Reflection[]>([]);
   const [completionRate, setCompletionRate] = useState(0);
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0);
+  const [nextEvent, setNextEvent] = useState<CountdownEvent | null>(null);
   const [mounted, setMounted] = useState(false);
 
   const today = getTodayDate();
@@ -55,6 +59,9 @@ export default function Home() {
     const allWorkouts = getWorkouts();
     const thisWeek = allWorkouts.filter(w => new Date(w.date) >= weekAgo);
     setWeeklyWorkouts(thisWeek.length);
+
+    // Get next upcoming event
+    setNextEvent(getNextEvent());
   }, [today]);
 
   useEffect(() => {
@@ -116,6 +123,34 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Countdown Widget */}
+        {nextEvent && (
+          <Link href="/countdown">
+            <Card className={`mb-6 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20 hover:border-primary/40 transition-colors cursor-pointer ${mounted ? "animate-fade-in animate-fade-in-delay-1" : "opacity-0"}`}>
+              <CardContent className="py-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-primary/20 flex flex-col items-center justify-center">
+                    <span className="text-xl font-bold text-primary">{getDaysUntil(nextEvent.date)}</span>
+                    <span className="text-[9px] text-primary font-medium">DAYS</span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span>{EVENT_CATEGORIES.find(c => c.value === nextEvent.category)?.emoji}</span>
+                      <h3 className="font-semibold">{nextEvent.name}</h3>
+                    </div>
+                    {nextEvent.focusAreas.length > 0 && (
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Focus: {nextEvent.focusAreas.map(a => VISION_CATEGORIES.find(c => c.value === a)?.label).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-primary" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        )}
 
         {/* Quick Stats Grid */}
         <div className={`grid grid-cols-2 gap-4 mb-8 ${mounted ? "animate-fade-in animate-fade-in-delay-1" : "opacity-0"}`}>

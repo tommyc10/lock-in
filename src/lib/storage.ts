@@ -1,4 +1,4 @@
-import { Habit, HabitCompletion, Recovery, Reflection, Priority, Workout, SavedExercise, Exercise, ExerciseSet } from "./types";
+import { Habit, HabitCompletion, Recovery, Reflection, Priority, Workout, SavedExercise, Exercise, ExerciseSet, VisionItem, VisionCategory, CountdownEvent } from "./types";
 
 const STORAGE_KEYS = {
   HABITS: "lockin_habits",
@@ -8,6 +8,8 @@ const STORAGE_KEYS = {
   PRIORITIES: "lockin_priorities",
   WORKOUTS: "lockin_workouts",
   SAVED_EXERCISES: "lockin_saved_exercises",
+  VISION_BOARD: "lockin_vision_board",
+  COUNTDOWN_EVENTS: "lockin_countdown_events",
 } as const;
 
 // Generate a simple unique ID
@@ -437,4 +439,103 @@ export function getWorkoutStats(days: number = 30): { totalWorkouts: number; tot
       : 0;
 
   return { totalWorkouts, totalSets, avgDuration: Math.round(avgDuration) };
+}
+
+// ============ VISION BOARD ============
+
+export function getVisionItems(category?: VisionCategory): VisionItem[] {
+  const items = getFromStorage<VisionItem>(STORAGE_KEYS.VISION_BOARD);
+  if (category) {
+    return items.filter((item) => item.category === category).sort((a, b) => a.order - b.order);
+  }
+  return items.sort((a, b) => a.order - b.order);
+}
+
+export function saveVisionItem(item: Omit<VisionItem, "id" | "createdAt" | "order">): VisionItem {
+  const items = getVisionItems();
+  const categoryItems = items.filter((i) => i.category === item.category);
+  const newItem: VisionItem = {
+    ...item,
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+    order: categoryItems.length,
+  };
+  items.push(newItem);
+  saveToStorage(STORAGE_KEYS.VISION_BOARD, items);
+  return newItem;
+}
+
+export function updateVisionItem(id: string, updates: Partial<VisionItem>): void {
+  const items = getVisionItems();
+  const index = items.findIndex((item) => item.id === id);
+  if (index !== -1) {
+    items[index] = { ...items[index], ...updates };
+    saveToStorage(STORAGE_KEYS.VISION_BOARD, items);
+  }
+}
+
+export function deleteVisionItem(id: string): void {
+  const items = getVisionItems().filter((item) => item.id !== id);
+  saveToStorage(STORAGE_KEYS.VISION_BOARD, items);
+}
+
+export function reorderVisionItems(category: VisionCategory, itemIds: string[]): void {
+  const items = getVisionItems();
+  itemIds.forEach((id, index) => {
+    const itemIndex = items.findIndex((item) => item.id === id);
+    if (itemIndex !== -1) {
+      items[itemIndex].order = index;
+    }
+  });
+  saveToStorage(STORAGE_KEYS.VISION_BOARD, items);
+}
+
+// ============ COUNTDOWN EVENTS ============
+
+export function getCountdownEvents(): CountdownEvent[] {
+  return getFromStorage<CountdownEvent>(STORAGE_KEYS.COUNTDOWN_EVENTS)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+}
+
+export function getUpcomingEvents(): CountdownEvent[] {
+  const today = getTodayDate();
+  return getCountdownEvents().filter((event) => event.date >= today);
+}
+
+export function getNextEvent(): CountdownEvent | null {
+  const upcoming = getUpcomingEvents();
+  return upcoming.length > 0 ? upcoming[0] : null;
+}
+
+export function saveCountdownEvent(event: Omit<CountdownEvent, "id" | "createdAt">): CountdownEvent {
+  const events = getCountdownEvents();
+  const newEvent: CountdownEvent = {
+    ...event,
+    id: generateId(),
+    createdAt: new Date().toISOString(),
+  };
+  events.push(newEvent);
+  saveToStorage(STORAGE_KEYS.COUNTDOWN_EVENTS, events);
+  return newEvent;
+}
+
+export function updateCountdownEvent(id: string, updates: Partial<CountdownEvent>): void {
+  const events = getCountdownEvents();
+  const index = events.findIndex((e) => e.id === id);
+  if (index !== -1) {
+    events[index] = { ...events[index], ...updates };
+    saveToStorage(STORAGE_KEYS.COUNTDOWN_EVENTS, events);
+  }
+}
+
+export function deleteCountdownEvent(id: string): void {
+  const events = getCountdownEvents().filter((e) => e.id !== id);
+  saveToStorage(STORAGE_KEYS.COUNTDOWN_EVENTS, events);
+}
+
+export function getDaysUntil(date: string): number {
+  const today = new Date(getTodayDate());
+  const eventDate = new Date(date);
+  const diffTime = eventDate.getTime() - today.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }

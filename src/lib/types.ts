@@ -83,6 +83,50 @@ export interface SavedExercise {
   createdAt: string;
 }
 
+// Vision Board types
+export type VisionCategory = "physique" | "style" | "lifestyle" | "goals";
+
+export interface VisionItem {
+  id: string;
+  category: VisionCategory;
+  imageUrl?: string; // For URL-based images
+  imageData?: string; // For uploaded images (base64)
+  caption?: string;
+  createdAt: string;
+  order: number;
+}
+
+export const VISION_CATEGORIES: { value: VisionCategory; label: string }[] = [
+  { value: "physique", label: "Physique" },
+  { value: "style", label: "Style" },
+  { value: "lifestyle", label: "Lifestyle" },
+  { value: "goals", label: "Goals" },
+];
+
+// Countdown Event types
+export type EventCategory = "physique" | "style" | "lifestyle" | "career" | "social" | "other";
+
+export interface CountdownEvent {
+  id: string;
+  name: string;
+  date: string; // YYYY-MM-DD
+  category: EventCategory;
+  note?: string;
+  imageUrl?: string; // For URL-based images
+  imageData?: string; // For uploaded images (base64)
+  focusAreas: VisionCategory[]; // Links to vision board categories to focus on
+  createdAt: string;
+}
+
+export const EVENT_CATEGORIES: { value: EventCategory; label: string; emoji: string }[] = [
+  { value: "physique", label: "Physique", emoji: "💪" },
+  { value: "style", label: "Style", emoji: "👔" },
+  { value: "lifestyle", label: "Lifestyle", emoji: "✨" },
+  { value: "career", label: "Career", emoji: "💼" },
+  { value: "social", label: "Social", emoji: "🎉" },
+  { value: "other", label: "Other", emoji: "📅" },
+];
+
 export const HABIT_TEMPLATES: HabitTemplate[] = [
   // Morning
   { name: "Drink water", timeOfDay: "morning", category: "Health" },
