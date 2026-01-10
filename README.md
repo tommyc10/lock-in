@@ -41,6 +41,10 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+### 🌐 Live Demo
+
+**[lock-in-jade.vercel.app](https://lock-in-jade.vercel.app)**
+
 ---
 
 ## 🛠️ Tech Stack
