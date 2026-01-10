@@ -1,63 +1,256 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { Habit, Priority, Reflection } from "@/lib/types";
+import {
+  getHabits,
+  getCompletions,
+  getTodayDate,
+  getPriorities,
+  getReflections,
+  getCompletionRate,
+  getWorkouts,
+} from "@/lib/storage";
+import { Header } from "@/components/layout/Header";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Sparkles,
+  Target,
+  Dumbbell,
+  Moon,
+  ChevronRight,
+  CheckCircle2,
+  Circle,
+  TrendingUp,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [todayStats, setTodayStats] = useState({ completed: 0, total: 0 });
+  const [priorities, setPriorities] = useState<Priority[]>([]);
+  const [reflections, setReflections] = useState<Reflection[]>([]);
+  const [completionRate, setCompletionRate] = useState(0);
+  const [weeklyWorkouts, setWeeklyWorkouts] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  const today = getTodayDate();
+
+  const loadData = useCallback(() => {
+    const loadedHabits = getHabits();
+    setHabits(loadedHabits);
+
+    // Calculate today's habit stats
+    const completions = getCompletions(today);
+    const completed = completions.filter((c) => c.completed).length;
+    setTodayStats({ completed, total: loadedHabits.length });
+
+    setPriorities(getPriorities(today));
+    setReflections(getReflections(today));
+    setCompletionRate(getCompletionRate(7));
+
+    // Calculate weekly workouts
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const allWorkouts = getWorkouts();
+    const thisWeek = allWorkouts.filter(w => new Date(w.date) >= weekAgo);
+    setWeeklyWorkouts(thisWeek.length);
+  }, [today]);
+
+  useEffect(() => {
+    loadData();
+    setMounted(true);
+  }, [loadData]);
+
+  const prioritiesCompleted = priorities.filter((p) => p.completed).length;
+  const reflectionsCount = reflections.length;
+  const habitProgressPercent = todayStats.total > 0
+    ? Math.round((todayStats.completed / todayStats.total) * 100)
+    : 0;
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen pb-24">
+      <Header />
+
+      <main className="max-w-3xl mx-auto px-6 py-8">
+        {/* Main Progress Ring */}
+        <div className={`mb-6 ${mounted ? "animate-fade-in" : "opacity-0"}`}>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">7-day streak</p>
+                  <p className="text-5xl font-bold text-foreground tracking-tight mt-1">{completionRate}%</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {completionRate === 0 ? "Start tracking today" :
+                     completionRate >= 80 ? "Outstanding consistency" :
+                     completionRate >= 50 ? "Building momentum" : "Every day counts"}
+                  </p>
+                </div>
+                <div className="w-32 h-32 relative">
+                  <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      fill="none"
+                      className="stroke-muted"
+                      strokeWidth="10"
+                    />
+                    <circle
+                      cx="64"
+                      cy="64"
+                      r="56"
+                      fill="none"
+                      className={`stroke-primary ${mounted ? "progress-ring-animated" : ""}`}
+                      strokeWidth="10"
+                      strokeDasharray={`${completionRate * 3.52} 352`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-primary" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Quick Stats Grid */}
+        <div className={`grid grid-cols-2 gap-4 mb-8 ${mounted ? "animate-fade-in animate-fade-in-delay-1" : "opacity-0"}`}>
+          <Card className="bg-muted/30">
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{todayStats.completed}/{todayStats.total}</p>
+                  <p className="text-xs text-muted-foreground">Today&apos;s habits</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-muted/30">
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <Dumbbell className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{weeklyWorkouts}</p>
+                  <p className="text-xs text-muted-foreground">Workouts this week</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Links */}
+        <div className={`space-y-3 ${mounted ? "animate-fade-in animate-fade-in-delay-2" : "opacity-0"}`}>
+          {/* Habits Link */}
+          <Link href="/habits">
+            <Card className="group hover:bg-muted/50 transition-colors cursor-pointer">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Target className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Habits</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {todayStats.total === 0
+                          ? "Set up your daily habits"
+                          : `${todayStats.completed} of ${todayStats.total} completed`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {todayStats.total > 0 && (
+                      <div className="flex items-center gap-0.5 mr-2">
+                        {Array.from({ length: Math.min(todayStats.total, 5) }).map((_, i) => (
+                          i < todayStats.completed ? (
+                            <CheckCircle2 key={i} className="w-4 h-4 text-success" />
+                          ) : (
+                            <Circle key={i} className="w-4 h-4 text-muted-foreground/30" />
+                          )
+                        ))}
+                        {todayStats.total > 5 && (
+                          <span className="text-xs text-muted-foreground ml-1">+{todayStats.total - 5}</span>
+                        )}
+                      </div>
+                    )}
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Workout Link */}
+          <Link href="/workout">
+            <Card className="group hover:bg-muted/50 transition-colors cursor-pointer">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                      <Dumbbell className="w-6 h-6 text-amber-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Workout</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {weeklyWorkouts === 0
+                          ? "Start your first workout"
+                          : `${weeklyWorkouts} workout${weeklyWorkouts === 1 ? '' : 's'} this week`}
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          {/* Reflection Link */}
+          <Link href="/reflection">
+            <Card className="group hover:bg-muted/50 transition-colors cursor-pointer">
+              <CardContent className="py-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-violet-500/10 flex items-center justify-center">
+                      <Moon className="w-6 h-6 text-violet-500" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Reflection</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {priorities.length === 0 && reflectionsCount === 0
+                          ? "Set priorities & reflect"
+                          : `${prioritiesCompleted}/${priorities.length} priorities done`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {reflectionsCount > 0 && (
+                      <span className="text-xs text-success font-medium bg-success/10 px-2 py-0.5 rounded-full mr-2">
+                        Reflected
+                      </span>
+                    )}
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+
+        {/* Motivation Quote */}
+        <div className={`mt-10 text-center ${mounted ? "animate-fade-in animate-fade-in-delay-3" : "opacity-0"}`}>
+          <p className="text-sm text-muted-foreground italic">
+            &ldquo;Small daily improvements over time lead to stunning results.&rdquo;
+          </p>
         </div>
       </main>
     </div>
