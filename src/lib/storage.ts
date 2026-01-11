@@ -539,3 +539,204 @@ export function getDaysUntil(date: string): number {
   const diffTime = eventDate.getTime() - today.getTime();
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
+
+// ============ STREAKS ============
+
+// Get the current overall streak (consecutive days with 80%+ habit completion)
+export function getCurrentStreak(): number {
+  const habits = getHabits();
+  if (habits.length === 0) return 0;
+
+  const today = getTodayDate();
+  let streak = 0;
+  let checkDate = new Date(today);
+
+  // Check if today is complete - if not, start from yesterday
+  const todayCompletions = getCompletions(today);
+  const todayCompleted = todayCompletions.filter((c) => c.completed).length;
+  const todayRate = habits.length > 0 ? todayCompleted / habits.length : 0;
+
+  if (todayRate < 0.8) {
+    // Today not yet complete, check from yesterday
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  // Count consecutive days with 80%+ completion
+  while (true) {
+    const dateStr = checkDate.toISOString().split("T")[0];
+    const completions = getCompletions(dateStr);
+
+    // Get habits that existed on this date
+    const habitsOnDate = habits.filter((h) => h.createdAt.split("T")[0] <= dateStr);
+    if (habitsOnDate.length === 0) break;
+
+    const completed = completions.filter((c) => c.completed).length;
+    const rate = completed / habitsOnDate.length;
+
+    if (rate >= 0.8) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+
+    // Safety limit - don't check more than a year back
+    if (streak > 365) break;
+  }
+
+  return streak;
+}
+
+// Get streak for a specific habit
+export function getHabitStreak(habitId: string): number {
+  const habit = getHabits().find((h) => h.id === habitId);
+  if (!habit) return 0;
+
+  const today = getTodayDate();
+  let streak = 0;
+  let checkDate = new Date(today);
+
+  // Check if today is complete for this habit
+  const todayComplete = isHabitCompleted(habitId, today);
+  if (!todayComplete) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  // Count consecutive days
+  while (true) {
+    const dateStr = checkDate.toISOString().split("T")[0];
+
+    // Don't count days before habit was created
+    if (dateStr < habit.createdAt.split("T")[0]) break;
+
+    if (isHabitCompleted(habitId, dateStr)) {
+      streak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+
+    if (streak > 365) break;
+  }
+
+  return streak;
+}
+
+// Get longest streak ever
+export function getLongestStreak(): number {
+  const habits = getHabits();
+  if (habits.length === 0) return 0;
+
+  // Find the earliest habit creation date
+  const earliestDate = habits.reduce((earliest, h) => {
+    const created = h.createdAt.split("T")[0];
+    return created < earliest ? created : earliest;
+  }, getTodayDate());
+
+  let longestStreak = 0;
+  let currentStreak = 0;
+  let checkDate = new Date(earliestDate);
+  const today = new Date(getTodayDate());
+
+  while (checkDate <= today) {
+    const dateStr = checkDate.toISOString().split("T")[0];
+    const completions = getCompletions(dateStr);
+
+    const habitsOnDate = habits.filter((h) => h.createdAt.split("T")[0] <= dateStr);
+    if (habitsOnDate.length === 0) {
+      checkDate.setDate(checkDate.getDate() + 1);
+      continue;
+    }
+
+    const completed = completions.filter((c) => c.completed).length;
+    const rate = completed / habitsOnDate.length;
+
+    if (rate >= 0.8) {
+      currentStreak++;
+      longestStreak = Math.max(longestStreak, currentStreak);
+    } else {
+      currentStreak = 0;
+    }
+
+    checkDate.setDate(checkDate.getDate() + 1);
+  }
+
+  return longestStreak;
+}
+
+// Get achievements based on streaks
+export type Achievement = {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  requirement: number;
+  unlocked: boolean;
+};
+
+export function getAchievements(): Achievement[] {
+  const currentStreak = getCurrentStreak();
+  const longestStreak = getLongestStreak();
+  const bestStreak = Math.max(currentStreak, longestStreak);
+
+  const achievements: Achievement[] = [
+    {
+      id: "streak-3",
+      name: "First Steps",
+      description: "3 day streak",
+      icon: "🌱",
+      requirement: 3,
+      unlocked: bestStreak >= 3,
+    },
+    {
+      id: "streak-7",
+      name: "One Week",
+      description: "7 day streak",
+      icon: "🔥",
+      requirement: 7,
+      unlocked: bestStreak >= 7,
+    },
+    {
+      id: "streak-14",
+      name: "Two Weeks",
+      description: "14 day streak",
+      icon: "💪",
+      requirement: 14,
+      unlocked: bestStreak >= 14,
+    },
+    {
+      id: "streak-30",
+      name: "Locked In",
+      description: "30 day streak",
+      icon: "⚡",
+      requirement: 30,
+      unlocked: bestStreak >= 30,
+    },
+    {
+      id: "streak-60",
+      name: "Unstoppable",
+      description: "60 day streak",
+      icon: "🏆",
+      requirement: 60,
+      unlocked: bestStreak >= 60,
+    },
+    {
+      id: "streak-100",
+      name: "Centurion",
+      description: "100 day streak",
+      icon: "👑",
+      requirement: 100,
+      unlocked: bestStreak >= 100,
+    },
+    {
+      id: "streak-365",
+      name: "Year of Discipline",
+      description: "365 day streak",
+      icon: "🎯",
+      requirement: 365,
+      unlocked: bestStreak >= 365,
+    },
+  ];
+
+  return achievements;
+}

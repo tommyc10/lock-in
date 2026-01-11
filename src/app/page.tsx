@@ -12,6 +12,10 @@ import {
   getWorkouts,
   getNextEvent,
   getDaysUntil,
+  getCurrentStreak,
+  getLongestStreak,
+  getAchievements,
+  Achievement,
 } from "@/lib/storage";
 import { Header } from "@/components/layout/Header";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,6 +29,8 @@ import {
   Circle,
   TrendingUp,
   Clock,
+  Flame,
+  Trophy,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -36,6 +42,9 @@ export default function Home() {
   const [completionRate, setCompletionRate] = useState(0);
   const [weeklyWorkouts, setWeeklyWorkouts] = useState(0);
   const [nextEvent, setNextEvent] = useState<CountdownEvent | null>(null);
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [mounted, setMounted] = useState(false);
 
   const today = getTodayDate();
@@ -62,6 +71,11 @@ export default function Home() {
 
     // Get next upcoming event
     setNextEvent(getNextEvent());
+
+    // Get streak data
+    setCurrentStreak(getCurrentStreak());
+    setLongestStreak(getLongestStreak());
+    setAchievements(getAchievements());
   }, [today]);
 
   useEffect(() => {
@@ -80,49 +94,79 @@ export default function Home() {
       <Header />
 
       <main className="max-w-3xl mx-auto px-6 py-8">
-        {/* Main Progress Ring */}
+        {/* Streak Card */}
         <div className={`mb-6 ${mounted ? "animate-fade-in" : "opacity-0"}`}>
-          <Card>
+          <Card className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border-orange-500/20">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">7-day streak</p>
-                  <p className="text-5xl font-bold text-foreground tracking-tight mt-1">{completionRate}%</p>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Flame className="w-5 h-5 text-orange-500" />
+                    <p className="text-sm font-medium text-muted-foreground">Current Streak</p>
+                  </div>
+                  <p className="text-5xl font-bold text-foreground tracking-tight">
+                    {currentStreak}
+                    <span className="text-2xl font-normal text-muted-foreground ml-2">
+                      {currentStreak === 1 ? "day" : "days"}
+                    </span>
+                  </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    {completionRate === 0 ? "Start tracking today" :
-                     completionRate >= 80 ? "Outstanding consistency" :
-                     completionRate >= 50 ? "Building momentum" : "Every day counts"}
+                    {currentStreak === 0 ? "Complete 80%+ habits to start" :
+                     currentStreak >= longestStreak && currentStreak > 0 ? "Personal best!" :
+                     `Best: ${longestStreak} days`}
                   </p>
                 </div>
-                <div className="w-32 h-32 relative">
+                <div className="w-28 h-28 relative">
                   <svg className="w-full h-full transform -rotate-90">
                     <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
+                      cx="56"
+                      cy="56"
+                      r="48"
                       fill="none"
-                      className="stroke-muted"
-                      strokeWidth="10"
+                      className="stroke-muted/30"
+                      strokeWidth="8"
                     />
                     <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
+                      cx="56"
+                      cy="56"
+                      r="48"
                       fill="none"
-                      className={`stroke-primary ${mounted ? "progress-ring-animated" : ""}`}
-                      strokeWidth="10"
-                      strokeDasharray={`${completionRate * 3.52} 352`}
+                      className={`stroke-orange-500 ${mounted ? "progress-ring-animated" : ""}`}
+                      strokeWidth="8"
+                      strokeDasharray={`${Math.min(currentStreak / 30, 1) * 301} 301`}
                       strokeLinecap="round"
                     />
                   </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Sparkles className="w-8 h-8 text-primary" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <Flame className={`w-8 h-8 ${currentStreak > 0 ? "text-orange-500" : "text-muted-foreground/30"}`} />
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
+
+        {/* Achievements */}
+        {achievements.some(a => a.unlocked) && (
+          <div className={`mb-6 ${mounted ? "animate-fade-in animate-fade-in-delay-1" : "opacity-0"}`}>
+            <div className="flex items-center gap-2 mb-3">
+              <Trophy className="w-4 h-4 text-amber-500" />
+              <h3 className="text-sm font-medium text-muted-foreground">Achievements</h3>
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {achievements.filter(a => a.unlocked).map((achievement) => (
+                <div
+                  key={achievement.id}
+                  className="flex items-center gap-2 bg-muted/50 rounded-full px-3 py-1.5"
+                  title={achievement.description}
+                >
+                  <span>{achievement.icon}</span>
+                  <span className="text-sm font-medium">{achievement.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Countdown Widget */}
         {nextEvent && (
@@ -153,38 +197,37 @@ export default function Home() {
         )}
 
         {/* Quick Stats Grid */}
-        <div className={`grid grid-cols-2 gap-4 mb-8 ${mounted ? "animate-fade-in animate-fade-in-delay-1" : "opacity-0"}`}>
+        <div className={`grid grid-cols-3 gap-3 mb-8 ${mounted ? "animate-fade-in animate-fade-in-delay-2" : "opacity-0"}`}>
           <Card className="bg-muted/30">
-            <CardContent className="pt-5 pb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{todayStats.completed}/{todayStats.total}</p>
-                  <p className="text-xs text-muted-foreground">Today&apos;s habits</p>
-                </div>
+            <CardContent className="pt-4 pb-4 px-3">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{todayStats.completed}/{todayStats.total}</p>
+                <p className="text-xs text-muted-foreground">Today</p>
               </div>
             </CardContent>
           </Card>
 
           <Card className="bg-muted/30">
-            <CardContent className="pt-5 pb-5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
-                  <Dumbbell className="w-5 h-5 text-amber-500" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{weeklyWorkouts}</p>
-                  <p className="text-xs text-muted-foreground">Workouts this week</p>
-                </div>
+            <CardContent className="pt-4 pb-4 px-3">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{completionRate}%</p>
+                <p className="text-xs text-muted-foreground">7-day rate</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-muted/30">
+            <CardContent className="pt-4 pb-4 px-3">
+              <div className="text-center">
+                <p className="text-2xl font-bold">{weeklyWorkouts}</p>
+                <p className="text-xs text-muted-foreground">Workouts</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Quick Links */}
-        <div className={`space-y-3 ${mounted ? "animate-fade-in animate-fade-in-delay-2" : "opacity-0"}`}>
+        <div className={`space-y-3 ${mounted ? "animate-fade-in animate-fade-in-delay-3" : "opacity-0"}`}>
           {/* Habits Link */}
           <Link href="/habits">
             <Card className="group hover:bg-muted/50 transition-colors cursor-pointer">
@@ -282,7 +325,7 @@ export default function Home() {
         </div>
 
         {/* Motivation Quote */}
-        <div className={`mt-10 text-center ${mounted ? "animate-fade-in animate-fade-in-delay-3" : "opacity-0"}`}>
+        <div className={`mt-10 text-center ${mounted ? "animate-fade-in animate-fade-in-delay-4" : "opacity-0"}`}>
           <p className="text-sm text-muted-foreground italic">
             &ldquo;Small daily improvements over time lead to stunning results.&rdquo;
           </p>

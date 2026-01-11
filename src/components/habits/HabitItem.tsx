@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Habit } from "@/lib/types";
-import { isHabitCompleted, toggleCompletion, getTodayDate } from "@/lib/storage";
+import { isHabitCompleted, toggleCompletion, getTodayDate, getHabitStreak } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Check } from "lucide-react";
+import { Pencil, Trash2, Check, Flame } from "lucide-react";
 
 interface HabitItemProps {
   habit: Habit;
@@ -17,6 +17,7 @@ export function HabitItem({ habit, onToggle, onEdit, onDelete }: HabitItemProps)
   const today = getTodayDate();
   const [completed, setCompleted] = useState(isHabitCompleted(habit.id, today));
   const [animating, setAnimating] = useState(false);
+  const [streak, setStreak] = useState(getHabitStreak(habit.id));
 
   const handleToggle = () => {
     toggleCompletion(habit.id, today);
@@ -26,6 +27,9 @@ export function HabitItem({ habit, onToggle, onEdit, onDelete }: HabitItemProps)
       setAnimating(true);
       setTimeout(() => setAnimating(false), 250);
     }
+
+    // Update streak after toggling
+    setTimeout(() => setStreak(getHabitStreak(habit.id)), 50);
 
     onToggle?.();
   };
@@ -57,6 +61,14 @@ export function HabitItem({ habit, onToggle, onEdit, onDelete }: HabitItemProps)
       >
         {habit.name}
       </span>
+
+      {/* Streak indicator */}
+      {streak > 0 && (
+        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/10 mr-1">
+          <Flame className="w-3 h-3 text-orange-500" />
+          <span className="text-xs font-medium text-orange-500">{streak}</span>
+        </div>
+      )}
 
       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
         {onEdit && (
