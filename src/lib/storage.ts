@@ -1,4 +1,4 @@
-import { Habit, HabitCompletion, Recovery, Reflection, Priority, Workout, SavedExercise, Exercise, ExerciseSet, VisionItem, VisionCategory, CountdownEvent } from "./types";
+import { Habit, HabitCompletion, Recovery, Reflection, Priority, Workout, SavedExercise, Exercise, ExerciseSet, VisionItem, VisionCategory, CountdownEvent, DayOfWeek } from "./types";
 
 const STORAGE_KEYS = {
   HABITS: "lockin_habits",
@@ -65,6 +65,67 @@ export function deleteHabit(id: string): void {
   saveToStorage(STORAGE_KEYS.HABITS, habits);
 }
 
+// Check if a habit is due on a specific date
+export function isHabitDueOnDate(habit: Habit, dateStr: string): boolean {
+  const date = new Date(dateStr);
+  const dayOfWeek = date.getDay() as DayOfWeek;
+
+  // Handle legacy habits without frequency (treat as daily)
+  if (!habit.frequency || habit.frequency === "daily") {
+    return true;
+  }
+
+  if (habit.frequency === "specific_days") {
+    return habit.specificDays?.includes(dayOfWeek) ?? false;
+  }
+
+  if (habit.frequency === "weekly") {
+    // For weekly habits, they're always "available" to be done
+    // We just track if they've hit their weekly target
+    return true;
+  }
+
+  return true;
+}
+
+// Get how many times a habit was completed this week (Mon-Sun)
+export function getWeeklyCompletionCount(habitId: string, dateStr: string): number {
+  const date = new Date(dateStr);
+  const dayOfWeek = date.getDay();
+  // Get Monday of this week
+  const monday = new Date(date);
+  monday.setDate(date.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+
+  let count = 0;
+  for (let i = 0; i < 7; i++) {
+    const checkDate = new Date(monday);
+    checkDate.setDate(monday.getDate() + i);
+    const checkDateStr = checkDate.toISOString().split("T")[0];
+
+    // Don't count future dates
+    if (checkDateStr > dateStr) break;
+
+    if (isHabitCompleted(habitId, checkDateStr)) {
+      count++;
+    }
+  }
+  return count;
+}
+
+// Check if a weekly habit has met its target for the week
+export function hasMetWeeklyTarget(habit: Habit, dateStr: string): boolean {
+  if (habit.frequency !== "weekly" || !habit.weeklyTarget) return true;
+  const count = getWeeklyCompletionCount(habit.id, dateStr);
+  return count >= habit.weeklyTarget;
+}
+
+// Get habits that are due today
+export function getDueHabits(dateStr?: string): Habit[] {
+  const date = dateStr || getTodayDate();
+  const habits = getHabits();
+  return habits.filter((habit) => isHabitDueOnDate(habit, date));
+}
+
 // Completions
 export function getCompletions(date?: string): HabitCompletion[] {
   const completions = getFromStorage<HabitCompletion>(STORAGE_KEYS.COMPLETIONS);
@@ -124,6 +185,11 @@ export function getMissedHabitsYesterday(): Habit[] {
     const habitCreatedDate = habit.createdAt.split("T")[0];
     if (habitCreatedDate >= getTodayDate()) {
       return false; // Habit was created today, can't be "missed" yesterday
+    }
+
+    // Only count as missed if the habit was due yesterday
+    if (!isHabitDueOnDate(habit, yesterdayStr)) {
+      return false;
     }
 
     const completion = completions.find((c) => c.habitId === habit.id);
@@ -233,8 +299,19 @@ export function getCompletionRate(days: number = 7): number {
     const dateStr = date.toISOString().split("T")[0];
 
     const completions = getCompletions(dateStr);
-    totalExpected += habits.length;
-    totalCompleted += completions.filter((c) => c.completed).length;
+
+    // Only count habits that were due on this date
+    const dueHabits = habits.filter((h) => {
+      // Habit must exist on this date
+      if (h.createdAt.split("T")[0] > dateStr) return false;
+      return isHabitDueOnDate(h, dateStr);
+    });
+
+    totalExpected += dueHabits.length;
+    totalCompleted += completions.filter((c) => {
+      const habit = dueHabits.find((h) => h.id === c.habitId);
+      return habit && c.completed;
+    }).length;
   }
 
   return totalExpected > 0 ? Math.round((totalCompleted / totalExpected) * 100) : 0;
@@ -552,9 +629,16 @@ export function getCurrentStreak(): number {
   let checkDate = new Date(today);
 
   // Check if today is complete - if not, start from yesterday
+  const todayDueHabits = habits.filter((h) => {
+    if (h.createdAt.split("T")[0] > today) return false;
+    return isHabitDueOnDate(h, today);
+  });
   const todayCompletions = getCompletions(today);
-  const todayCompleted = todayCompletions.filter((c) => c.completed).length;
-  const todayRate = habits.length > 0 ? todayCompleted / habits.length : 0;
+  const todayCompleted = todayCompletions.filter((c) => {
+    const habit = todayDueHabits.find((h) => h.id === c.habitId);
+    return habit && c.completed;
+  }).length;
+  const todayRate = todayDueHabits.length > 0 ? todayCompleted / todayDueHabits.length : 0;
 
   if (todayRate < 0.8) {
     // Today not yet complete, check from yesterday
@@ -566,12 +650,25 @@ export function getCurrentStreak(): number {
     const dateStr = checkDate.toISOString().split("T")[0];
     const completions = getCompletions(dateStr);
 
-    // Get habits that existed on this date
-    const habitsOnDate = habits.filter((h) => h.createdAt.split("T")[0] <= dateStr);
-    if (habitsOnDate.length === 0) break;
+    // Get habits that existed AND were due on this date
+    const dueHabitsOnDate = habits.filter((h) => {
+      if (h.createdAt.split("T")[0] > dateStr) return false;
+      return isHabitDueOnDate(h, dateStr);
+    });
 
-    const completed = completions.filter((c) => c.completed).length;
-    const rate = completed / habitsOnDate.length;
+    // Skip days with no due habits (still counts as streak continuation)
+    if (dueHabitsOnDate.length === 0) {
+      checkDate.setDate(checkDate.getDate() - 1);
+      // But don't go back more than a year
+      if (new Date(today).getTime() - checkDate.getTime() > 365 * 24 * 60 * 60 * 1000) break;
+      continue;
+    }
+
+    const completed = completions.filter((c) => {
+      const habit = dueHabitsOnDate.find((h) => h.id === c.habitId);
+      return habit && c.completed;
+    }).length;
+    const rate = completed / dueHabitsOnDate.length;
 
     if (rate >= 0.8) {
       streak++;
@@ -642,14 +739,23 @@ export function getLongestStreak(): number {
     const dateStr = checkDate.toISOString().split("T")[0];
     const completions = getCompletions(dateStr);
 
-    const habitsOnDate = habits.filter((h) => h.createdAt.split("T")[0] <= dateStr);
-    if (habitsOnDate.length === 0) {
+    // Get habits that existed AND were due on this date
+    const dueHabitsOnDate = habits.filter((h) => {
+      if (h.createdAt.split("T")[0] > dateStr) return false;
+      return isHabitDueOnDate(h, dateStr);
+    });
+
+    // Skip days with no due habits (counts as streak continuation)
+    if (dueHabitsOnDate.length === 0) {
       checkDate.setDate(checkDate.getDate() + 1);
       continue;
     }
 
-    const completed = completions.filter((c) => c.completed).length;
-    const rate = completed / habitsOnDate.length;
+    const completed = completions.filter((c) => {
+      const habit = dueHabitsOnDate.find((h) => h.id === c.habitId);
+      return habit && c.completed;
+    }).length;
+    const rate = completed / dueHabitsOnDate.length;
 
     if (rate >= 0.8) {
       currentStreak++;

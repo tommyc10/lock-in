@@ -1,9 +1,17 @@
 export type TimeOfDay = "morning" | "afternoon" | "evening";
 
+export type HabitFrequency = "daily" | "weekly" | "specific_days";
+
+// 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+export type DayOfWeek = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
 export interface Habit {
   id: string;
   name: string;
   timeOfDay: TimeOfDay;
+  frequency: HabitFrequency;
+  weeklyTarget?: number; // For "weekly" frequency - how many times per week
+  specificDays?: DayOfWeek[]; // For "specific_days" frequency
   createdAt: string;
 }
 

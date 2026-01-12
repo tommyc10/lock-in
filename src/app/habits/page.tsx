@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Habit, TimeOfDay } from "@/lib/types";
+import { Habit, HabitFrequency, DayOfWeek } from "@/lib/types";
 import {
   getHabits,
   saveHabit,
@@ -11,6 +11,7 @@ import {
   hasRecoveryForHabit,
   getTodayDate,
   getCompletions,
+  getDueHabits,
 } from "@/lib/storage";
 import { Header } from "@/components/layout/Header";
 import { HabitList } from "@/components/habits/HabitList";
@@ -38,10 +39,14 @@ export default function HabitsPage() {
     const loadedHabits = getHabits();
     setHabits(loadedHabits);
 
-    // Calculate today's stats
+    // Calculate today's stats (only count due habits)
+    const dueHabits = getDueHabits(today);
     const completions = getCompletions(today);
-    const completed = completions.filter((c) => c.completed).length;
-    setTodayStats({ completed, total: loadedHabits.length });
+    const completed = completions.filter((c) => {
+      const habit = dueHabits.find((h) => h.id === c.habitId);
+      return habit && c.completed;
+    }).length;
+    setTodayStats({ completed, total: dueHabits.length });
 
     // Check for missed habits
     const missed = getMissedHabitsYesterday().filter((h) => {
@@ -57,15 +62,35 @@ export default function HabitsPage() {
     setMounted(true);
   }, [loadData]);
 
-  const handleAddHabit = (name: string, timeOfDay: TimeOfDay) => {
-    saveHabit({ name, timeOfDay });
+  interface HabitFormData {
+    name: string;
+    timeOfDay: Habit["timeOfDay"];
+    frequency: HabitFrequency;
+    weeklyTarget?: number;
+    specificDays?: DayOfWeek[];
+  }
+
+  const handleAddHabit = (data: HabitFormData) => {
+    saveHabit({
+      name: data.name,
+      timeOfDay: data.timeOfDay,
+      frequency: data.frequency,
+      weeklyTarget: data.weeklyTarget,
+      specificDays: data.specificDays,
+    });
     loadData();
     setView("list");
   };
 
-  const handleEditHabit = (name: string, timeOfDay: TimeOfDay) => {
+  const handleEditHabit = (data: HabitFormData) => {
     if (editingHabit) {
-      updateHabit(editingHabit.id, { name, timeOfDay });
+      updateHabit(editingHabit.id, {
+        name: data.name,
+        timeOfDay: data.timeOfDay,
+        frequency: data.frequency,
+        weeklyTarget: data.weeklyTarget,
+        specificDays: data.specificDays,
+      });
       loadData();
       setEditingHabit(null);
       setView("list");
@@ -171,6 +196,9 @@ export default function HabitsPage() {
             }}
             initialName={editingHabit.name}
             initialTimeOfDay={editingHabit.timeOfDay}
+            initialFrequency={editingHabit.frequency || "daily"}
+            initialWeeklyTarget={editingHabit.weeklyTarget}
+            initialSpecificDays={editingHabit.specificDays}
             isEditing
           />
         )}

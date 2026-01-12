@@ -1,17 +1,38 @@
 "use client";
 
 import { useState } from "react";
-import { TimeOfDay, HABIT_TEMPLATES, HabitTemplate } from "@/lib/types";
+import { TimeOfDay, HabitFrequency, DayOfWeek, HABIT_TEMPLATES, HabitTemplate } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
+const DAYS_OF_WEEK: { value: DayOfWeek; label: string; short: string }[] = [
+  { value: 1, label: "Monday", short: "Mon" },
+  { value: 2, label: "Tuesday", short: "Tue" },
+  { value: 3, label: "Wednesday", short: "Wed" },
+  { value: 4, label: "Thursday", short: "Thu" },
+  { value: 5, label: "Friday", short: "Fri" },
+  { value: 6, label: "Saturday", short: "Sat" },
+  { value: 0, label: "Sunday", short: "Sun" },
+];
+
+interface HabitFormData {
+  name: string;
+  timeOfDay: TimeOfDay;
+  frequency: HabitFrequency;
+  weeklyTarget?: number;
+  specificDays?: DayOfWeek[];
+}
+
 interface HabitFormProps {
-  onSubmit: (name: string, timeOfDay: TimeOfDay) => void;
+  onSubmit: (data: HabitFormData) => void;
   onCancel: () => void;
   initialName?: string;
   initialTimeOfDay?: TimeOfDay;
+  initialFrequency?: HabitFrequency;
+  initialWeeklyTarget?: number;
+  initialSpecificDays?: DayOfWeek[];
   isEditing?: boolean;
 }
 
@@ -20,16 +41,28 @@ export function HabitForm({
   onCancel,
   initialName = "",
   initialTimeOfDay = "morning",
+  initialFrequency = "daily",
+  initialWeeklyTarget = 4,
+  initialSpecificDays = [],
   isEditing = false,
 }: HabitFormProps) {
   const [name, setName] = useState(initialName);
   const [timeOfDay, setTimeOfDay] = useState<TimeOfDay>(initialTimeOfDay);
+  const [frequency, setFrequency] = useState<HabitFrequency>(initialFrequency);
+  const [weeklyTarget, setWeeklyTarget] = useState(initialWeeklyTarget);
+  const [specificDays, setSpecificDays] = useState<DayOfWeek[]>(initialSpecificDays);
   const [showTemplates, setShowTemplates] = useState(!isEditing && !initialName);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim()) {
-      onSubmit(name.trim(), timeOfDay);
+      onSubmit({
+        name: name.trim(),
+        timeOfDay,
+        frequency,
+        weeklyTarget: frequency === "weekly" ? weeklyTarget : undefined,
+        specificDays: frequency === "specific_days" ? specificDays : undefined,
+      });
     }
   };
 
@@ -37,6 +70,12 @@ export function HabitForm({
     setName(template.name);
     setTimeOfDay(template.timeOfDay);
     setShowTemplates(false);
+  };
+
+  const toggleDay = (day: DayOfWeek) => {
+    setSpecificDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
   };
 
   const templatesByTime = HABIT_TEMPLATES.reduce(
@@ -119,8 +158,84 @@ export function HabitForm({
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label>Frequency</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant={frequency === "daily" ? "default" : "outline"}
+                  onClick={() => setFrequency("daily")}
+                  className="flex-1"
+                >
+                  Daily
+                </Button>
+                <Button
+                  type="button"
+                  variant={frequency === "weekly" ? "default" : "outline"}
+                  onClick={() => setFrequency("weekly")}
+                  className="flex-1"
+                >
+                  X per week
+                </Button>
+                <Button
+                  type="button"
+                  variant={frequency === "specific_days" ? "default" : "outline"}
+                  onClick={() => setFrequency("specific_days")}
+                  className="flex-1"
+                >
+                  Specific days
+                </Button>
+              </div>
+            </div>
+
+            {frequency === "weekly" && (
+              <div className="space-y-2">
+                <Label htmlFor="weekly-target">Times per week</Label>
+                <div className="flex gap-2">
+                  {[1, 2, 3, 4, 5, 6, 7].map((num) => (
+                    <Button
+                      key={num}
+                      type="button"
+                      variant={weeklyTarget === num ? "default" : "outline"}
+                      onClick={() => setWeeklyTarget(num)}
+                      className="flex-1"
+                      size="sm"
+                    >
+                      {num}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {frequency === "specific_days" && (
+              <div className="space-y-2">
+                <Label>Select days</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {DAYS_OF_WEEK.map((day) => (
+                    <Button
+                      key={day.value}
+                      type="button"
+                      variant={specificDays.includes(day.value) ? "default" : "outline"}
+                      onClick={() => toggleDay(day.value)}
+                      size="sm"
+                      className="w-12"
+                    >
+                      {day.short}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={!name.trim()}>
+              <Button
+                type="submit"
+                disabled={
+                  !name.trim() ||
+                  (frequency === "specific_days" && specificDays.length === 0)
+                }
+              >
                 {isEditing ? "Save Changes" : "Add Habit"}
               </Button>
               <Button type="button" variant="outline" onClick={onCancel}>

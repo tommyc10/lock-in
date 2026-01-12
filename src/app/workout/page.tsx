@@ -176,9 +176,13 @@ function WorkoutHome({
 }) {
   const totalWorkouts = history.length;
   const thisWeek = history.filter((w) => {
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-    return new Date(w.date) >= weekAgo;
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday
+    const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - mondayOffset);
+    monday.setHours(0, 0, 0, 0);
+    return new Date(w.date) >= monday;
   }).length;
 
   return (
