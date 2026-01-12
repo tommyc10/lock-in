@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TimeOfDay, HabitFrequency, DayOfWeek, HABIT_TEMPLATES, HabitTemplate } from "@/lib/types";
+import { TimeOfDay, HabitFrequency, DayOfWeek } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,7 +51,6 @@ export function HabitForm({
   const [frequency, setFrequency] = useState<HabitFrequency>(initialFrequency);
   const [weeklyTarget, setWeeklyTarget] = useState(initialWeeklyTarget);
   const [specificDays, setSpecificDays] = useState<DayOfWeek[]>(initialSpecificDays);
-  const [showTemplates, setShowTemplates] = useState(!isEditing && !initialName);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,25 +65,11 @@ export function HabitForm({
     }
   };
 
-  const handleTemplateSelect = (template: HabitTemplate) => {
-    setName(template.name);
-    setTimeOfDay(template.timeOfDay);
-    setShowTemplates(false);
-  };
-
   const toggleDay = (day: DayOfWeek) => {
     setSpecificDays((prev) =>
       prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
     );
   };
-
-  const templatesByTime = HABIT_TEMPLATES.reduce(
-    (acc, template) => {
-      acc[template.timeOfDay].push(template);
-      return acc;
-    },
-    { morning: [], afternoon: [], evening: [] } as Record<TimeOfDay, HabitTemplate[]>
-  );
 
   return (
     <Card>
@@ -92,168 +77,120 @@ export function HabitForm({
         <CardTitle>{isEditing ? "Edit Habit" : "Add New Habit"}</CardTitle>
       </CardHeader>
       <CardContent>
-        {showTemplates && (
-          <div className="mb-6">
-            <p className="text-sm text-muted-foreground mb-3">Quick start with a template:</p>
-            <div className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="habit-name">Habit name</Label>
+            <Input
+              id="habit-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., Morning workout"
+              autoFocus
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Time of day</Label>
+            <div className="flex gap-2">
               {(["morning", "afternoon", "evening"] as TimeOfDay[]).map((time) => (
-                <div key={time}>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">
-                    {time}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {templatesByTime[time].map((template) => (
-                      <button
-                        key={template.name}
-                        type="button"
-                        onClick={() => handleTemplateSelect(template)}
-                        className="px-3 py-1.5 text-sm bg-background border border-border rounded-md hover:border-primary hover:bg-secondary transition-all"
-                      >
-                        {template.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <Button
+                  key={time}
+                  type="button"
+                  variant={timeOfDay === time ? "default" : "outline"}
+                  onClick={() => setTimeOfDay(time)}
+                  className="flex-1"
+                >
+                  {time.charAt(0).toUpperCase() + time.slice(1)}
+                </Button>
               ))}
             </div>
-            <div className="border-t border-border mt-4 pt-4">
-              <button
+          </div>
+
+          <div className="space-y-2">
+            <Label>Frequency</Label>
+            <div className="flex gap-2">
+              <Button
                 type="button"
-                onClick={() => setShowTemplates(false)}
-                className="text-sm text-primary hover:underline"
+                variant={frequency === "daily" ? "default" : "outline"}
+                onClick={() => setFrequency("daily")}
+                className="flex-1"
               >
-                Or create a custom habit
-              </button>
+                Daily
+              </Button>
+              <Button
+                type="button"
+                variant={frequency === "weekly" ? "default" : "outline"}
+                onClick={() => setFrequency("weekly")}
+                className="flex-1"
+              >
+                X per week
+              </Button>
+              <Button
+                type="button"
+                variant={frequency === "specific_days" ? "default" : "outline"}
+                onClick={() => setFrequency("specific_days")}
+                className="flex-1"
+              >
+                Specific days
+              </Button>
             </div>
           </div>
-        )}
 
-        {!showTemplates && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {frequency === "weekly" && (
             <div className="space-y-2">
-              <Label htmlFor="habit-name">Habit name</Label>
-              <Input
-                id="habit-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Morning workout"
-                autoFocus
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Time of day</Label>
+              <Label htmlFor="weekly-target">Times per week</Label>
               <div className="flex gap-2">
-                {(["morning", "afternoon", "evening"] as TimeOfDay[]).map((time) => (
+                {[1, 2, 3, 4, 5, 6, 7].map((num) => (
                   <Button
-                    key={time}
+                    key={num}
                     type="button"
-                    variant={timeOfDay === time ? "default" : "outline"}
-                    onClick={() => setTimeOfDay(time)}
+                    variant={weeklyTarget === num ? "default" : "outline"}
+                    onClick={() => setWeeklyTarget(num)}
                     className="flex-1"
+                    size="sm"
                   >
-                    {time.charAt(0).toUpperCase() + time.slice(1)}
+                    {num}
                   </Button>
                 ))}
               </div>
             </div>
+          )}
 
+          {frequency === "specific_days" && (
             <div className="space-y-2">
-              <Label>Frequency</Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={frequency === "daily" ? "default" : "outline"}
-                  onClick={() => setFrequency("daily")}
-                  className="flex-1"
-                >
-                  Daily
-                </Button>
-                <Button
-                  type="button"
-                  variant={frequency === "weekly" ? "default" : "outline"}
-                  onClick={() => setFrequency("weekly")}
-                  className="flex-1"
-                >
-                  X per week
-                </Button>
-                <Button
-                  type="button"
-                  variant={frequency === "specific_days" ? "default" : "outline"}
-                  onClick={() => setFrequency("specific_days")}
-                  className="flex-1"
-                >
-                  Specific days
-                </Button>
+              <Label>Select days</Label>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAYS_OF_WEEK.map((day) => (
+                  <Button
+                    key={day.value}
+                    type="button"
+                    variant={specificDays.includes(day.value) ? "default" : "outline"}
+                    onClick={() => toggleDay(day.value)}
+                    size="sm"
+                    className="w-12"
+                  >
+                    {day.short}
+                  </Button>
+                ))}
               </div>
             </div>
+          )}
 
-            {frequency === "weekly" && (
-              <div className="space-y-2">
-                <Label htmlFor="weekly-target">Times per week</Label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5, 6, 7].map((num) => (
-                    <Button
-                      key={num}
-                      type="button"
-                      variant={weeklyTarget === num ? "default" : "outline"}
-                      onClick={() => setWeeklyTarget(num)}
-                      className="flex-1"
-                      size="sm"
-                    >
-                      {num}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {frequency === "specific_days" && (
-              <div className="space-y-2">
-                <Label>Select days</Label>
-                <div className="flex gap-1.5 flex-wrap">
-                  {DAYS_OF_WEEK.map((day) => (
-                    <Button
-                      key={day.value}
-                      type="button"
-                      variant={specificDays.includes(day.value) ? "default" : "outline"}
-                      onClick={() => toggleDay(day.value)}
-                      size="sm"
-                      className="w-12"
-                    >
-                      {day.short}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-2">
-              <Button
-                type="submit"
-                disabled={
-                  !name.trim() ||
-                  (frequency === "specific_days" && specificDays.length === 0)
-                }
-              >
-                {isEditing ? "Save Changes" : "Add Habit"}
-              </Button>
-              <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
-              </Button>
-            </div>
-
-            {!isEditing && (
-              <button
-                type="button"
-                onClick={() => setShowTemplates(true)}
-                className="text-sm text-primary hover:underline"
-              >
-                Back to templates
-              </button>
-            )}
-          </form>
-        )}
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="submit"
+              disabled={
+                !name.trim() ||
+                (frequency === "specific_days" && specificDays.length === 0)
+              }
+            >
+              {isEditing ? "Save Changes" : "Add Habit"}
+            </Button>
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          </div>
+        </form>
       </CardContent>
     </Card>
   );

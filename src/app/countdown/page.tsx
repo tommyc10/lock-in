@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Plus,
   Calendar,
@@ -264,11 +265,11 @@ export default function CountdownPage() {
 
               <div>
                 <Label>Date</Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  min={getTodayDate()}
+                  onChange={setDate}
+                  minDate={getTodayDate()}
+                  placeholder="Pick a date"
                 />
               </div>
 

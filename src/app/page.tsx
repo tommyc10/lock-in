@@ -203,6 +203,7 @@ export default function Home() {
               </CardContent>
             </Card>
           </Link>
+
         </div>
 
         {/* Motivation Quote */}
