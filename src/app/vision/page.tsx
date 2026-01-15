@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { VisionItem, VisionCategory, VISION_CATEGORIES } from "@/lib/types";
 import { getVisionItems, saveVisionItem, deleteVisionItem } from "@/lib/storage";
 import { Header } from "@/components/layout/Header";
@@ -21,7 +21,11 @@ import {
 type AddMode = "url" | "upload" | null;
 
 export default function VisionPage() {
-  const [items, setItems] = useState<VisionItem[]>([]);
+  // Lazy state initialization (rule: rerender-lazy-state-init)
+  const [items, setItems] = useState<VisionItem[]>(() => {
+    if (typeof window === "undefined") return [];
+    return getVisionItems();
+  });
   const [activeCategory, setActiveCategory] = useState<VisionCategory>("physique");
   const [addMode, setAddMode] = useState<AddMode>(null);
   const [imageUrl, setImageUrl] = useState("");
@@ -30,18 +34,31 @@ export default function VisionPage() {
   const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadData = () => {
-    setItems(getVisionItems());
-  };
-
   useEffect(() => {
-    loadData();
     setMounted(true);
   }, []);
 
-  const categoryItems = items.filter((item) => item.category === activeCategory);
+  // Memoize filtered items (rule: rerender-memo)
+  const categoryItems = useMemo(
+    () => items.filter((item) => item.category === activeCategory),
+    [items, activeCategory]
+  );
 
-  const handleAddByUrl = () => {
+  // Memoize category counts for tabs
+  const categoryCounts = useMemo(() => {
+    const counts: Record<VisionCategory, number> = {
+      physique: 0,
+      style: 0,
+      lifestyle: 0,
+      goals: 0,
+    };
+    for (const item of items) {
+      counts[item.category]++;
+    }
+    return counts;
+  }, [items]);
+
+  const handleAddByUrl = useCallback(() => {
     if (imageUrl.trim()) {
       saveVisionItem({
         category: activeCategory,
@@ -51,11 +68,11 @@ export default function VisionPage() {
       setImageUrl("");
       setCaption("");
       setAddMode(null);
-      loadData();
+      setItems(getVisionItems());
     }
-  };
+  }, [imageUrl, activeCategory, caption]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -68,23 +85,24 @@ export default function VisionPage() {
         });
         setCaption("");
         setAddMode(null);
-        loadData();
+        setItems(getVisionItems());
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, [activeCategory, caption]);
 
-  const handleDelete = (id: string) => {
+  // Functional setState for stable callback (rule: rerender-functional-setstate)
+  const handleDelete = useCallback((id: string) => {
     if (confirm("Remove this image from your vision board?")) {
       deleteVisionItem(id);
-      loadData();
+      setItems(prev => prev.filter(item => item.id !== id));
       setSelectedImage(null);
     }
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setSelectedImage(null);
-  };
+  }, []);
 
   return (
     <div className="min-h-screen pb-24">
@@ -103,7 +121,7 @@ export default function VisionPage() {
         {/* Category Tabs */}
         <div className={`flex gap-2 mb-6 overflow-x-auto pb-2 ${mounted ? "animate-fade-in animate-fade-in-delay-1" : "opacity-0"}`}>
           {VISION_CATEGORIES.map((cat) => {
-            const count = items.filter((i) => i.category === cat.value).length;
+            const count = categoryCounts[cat.value];
             return (
               <button
                 key={cat.value}

@@ -65,7 +65,7 @@ export function HabitItem({ habit, onToggle, onEdit, onDelete }: HabitItemProps)
 
   return (
     <div
-      className={`group flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
+      className={`content-auto group flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
         completed
           ? "bg-success-bg"
           : isNotDue || isWeeklyComplete

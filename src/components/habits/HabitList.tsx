@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { Habit, TimeOfDay } from "@/lib/types";
 import { HabitItem } from "./HabitItem";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
@@ -12,22 +13,24 @@ interface HabitListProps {
   onDelete?: (habitId: string) => void;
 }
 
+// Hoisted static config (rule: rendering-hoist-jsx)
 const TIME_CONFIG: Record<TimeOfDay, { title: string; description: string; Icon: typeof Sunrise }> = {
   morning: { title: "Morning", description: "Start your day right", Icon: Sunrise },
   afternoon: { title: "Afternoon", description: "Stay on track", Icon: Sun },
   evening: { title: "Evening", description: "Wind down well", Icon: Moon },
 };
 
-export function HabitList({ habits, onToggle, onEdit, onDelete }: HabitListProps) {
-  const habitsByTime = habits.reduce(
-    (acc, habit) => {
-      acc[habit.timeOfDay].push(habit);
-      return acc;
-    },
-    { morning: [], afternoon: [], evening: [] } as Record<TimeOfDay, Habit[]>
-  );
+const TIME_ORDER: TimeOfDay[] = ["morning", "afternoon", "evening"];
 
-  const timeOrder: TimeOfDay[] = ["morning", "afternoon", "evening"];
+export function HabitList({ habits, onToggle, onEdit, onDelete }: HabitListProps) {
+  // Memoize grouped habits to prevent recalculation on each render (rule: rerender-memo)
+  const habitsByTime = useMemo(() => {
+    const grouped: Record<TimeOfDay, Habit[]> = { morning: [], afternoon: [], evening: [] };
+    for (const habit of habits) {
+      grouped[habit.timeOfDay].push(habit);
+    }
+    return grouped;
+  }, [habits]);
 
   if (habits.length === 0) {
     return (
@@ -47,7 +50,7 @@ export function HabitList({ habits, onToggle, onEdit, onDelete }: HabitListProps
 
   return (
     <div className="space-y-4">
-      {timeOrder.map((timeOfDay) => {
+      {TIME_ORDER.map((timeOfDay) => {
         const timeHabits = habitsByTime[timeOfDay];
         if (timeHabits.length === 0) return null;
 

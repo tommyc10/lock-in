@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Habit, HabitFrequency, DayOfWeek } from "@/lib/types";
 import {
   getHabits,
@@ -23,44 +23,55 @@ import { Plus, CheckCircle2, Circle } from "lucide-react";
 
 type View = "list" | "add" | "edit";
 
+// Helper to compute today's stats with O(1) lookups
+function computeTodayStats(today: string) {
+  const dueHabits = getDueHabits(today);
+  const completions = getCompletions(today);
+  // Use Set for O(1) lookups instead of O(n²) find() calls
+  const dueHabitIds = new Set(dueHabits.map(h => h.id));
+  const completed = completions.filter(c => dueHabitIds.has(c.habitId) && c.completed).length;
+  return { completed, total: dueHabits.length };
+}
+
+// Helper to get missed habits that need recovery
+function getMissedHabitsNeedingRecovery() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split("T")[0];
+  return getMissedHabitsYesterday().filter(h => !hasRecoveryForHabit(h.id, yesterdayStr));
+}
+
 export default function HabitsPage() {
-  const [habits, setHabits] = useState<Habit[]>([]);
+  const today = useMemo(() => getTodayDate(), []);
+
+  // Lazy state initialization (rule: rerender-lazy-state-init)
+  const [habits, setHabits] = useState<Habit[]>(() => {
+    if (typeof window === "undefined") return [];
+    return getHabits();
+  });
   const [view, setView] = useState<View>("list");
   const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
-  const [missedHabits, setMissedHabits] = useState<Habit[]>([]);
+  const [missedHabits, setMissedHabits] = useState<Habit[]>(() => {
+    if (typeof window === "undefined") return [];
+    return getMissedHabitsNeedingRecovery();
+  });
   const [currentRecoveryIndex, setCurrentRecoveryIndex] = useState(0);
   const [showRecovery, setShowRecovery] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [todayStats, setTodayStats] = useState({ completed: 0, total: 0 });
-
-  const today = getTodayDate();
+  const [todayStats, setTodayStats] = useState(() => {
+    if (typeof window === "undefined") return { completed: 0, total: 0 };
+    return computeTodayStats(today);
+  });
 
   const loadData = useCallback(() => {
-    const loadedHabits = getHabits();
-    setHabits(loadedHabits);
-
-    // Calculate today's stats (only count due habits)
-    const dueHabits = getDueHabits(today);
-    const completions = getCompletions(today);
-    const completed = completions.filter((c) => {
-      const habit = dueHabits.find((h) => h.id === c.habitId);
-      return habit && c.completed;
-    }).length;
-    setTodayStats({ completed, total: dueHabits.length });
-
-    // Check for missed habits
-    const missed = getMissedHabitsYesterday().filter((h) => {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      return !hasRecoveryForHabit(h.id, yesterday.toISOString().split("T")[0]);
-    });
-    setMissedHabits(missed);
+    setHabits(getHabits());
+    setTodayStats(computeTodayStats(today));
+    setMissedHabits(getMissedHabitsNeedingRecovery());
   }, [today]);
 
   useEffect(() => {
-    loadData();
     setMounted(true);
-  }, [loadData]);
+  }, []);
 
   interface HabitFormData {
     name: string;

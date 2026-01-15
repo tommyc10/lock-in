@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Priority, Reflection } from "@/lib/types";
 import {
   getTodayDate,
@@ -20,59 +20,64 @@ import { Label } from "@/components/ui/label";
 import { Plus, X, Check, Target, Moon, Trophy, Lightbulb, Rocket } from "lucide-react";
 
 export default function ReflectionPage() {
-  const [priorities, setPriorities] = useState<Priority[]>([]);
+  const today = useMemo(() => getTodayDate(), []);
+
+  // Lazy state initialization (rule: rerender-lazy-state-init)
+  const [priorities, setPriorities] = useState<Priority[]>(() => {
+    if (typeof window === "undefined") return [];
+    return getPriorities(today);
+  });
   const [newPriority, setNewPriority] = useState("");
-  const [reflections, setReflections] = useState<Reflection[]>([]);
+  const [reflections, setReflections] = useState<Reflection[]>(() => {
+    if (typeof window === "undefined") return [];
+    return getReflections(today);
+  });
   const [mounted, setMounted] = useState(false);
 
-  const today = getTodayDate();
-
-  const loadData = useCallback(() => {
-    setPriorities(getPriorities(today));
-    setReflections(getReflections(today));
-  }, [today]);
-
   useEffect(() => {
-    loadData();
     setMounted(true);
-  }, [loadData]);
+  }, []);
 
-  const handleAddPriority = (e: React.FormEvent) => {
+  // Functional setState for stable callbacks (rule: rerender-functional-setstate)
+  const handleAddPriority = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (newPriority.trim()) {
-      savePriority({
-        date: today,
-        content: newPriority.trim(),
-        completed: false,
-        order: priorities.length,
+    const trimmed = newPriority.trim();
+    if (trimmed) {
+      setPriorities(prev => {
+        savePriority({
+          date: today,
+          content: trimmed,
+          completed: false,
+          order: prev.length,
+        });
+        return getPriorities(today);
       });
       setNewPriority("");
-      loadData();
     }
-  };
+  }, [newPriority, today]);
 
-  const handleTogglePriority = (id: string, completed: boolean) => {
+  const handleTogglePriority = useCallback((id: string, completed: boolean) => {
     updatePriority(id, { completed: !completed });
-    loadData();
-  };
+    setPriorities(prev => prev.map(p => p.id === id ? { ...p, completed: !completed } : p));
+  }, []);
 
-  const handleDeletePriority = (id: string) => {
+  const handleDeletePriority = useCallback((id: string) => {
     deletePriority(id);
-    loadData();
-  };
+    setPriorities(prev => prev.filter(p => p.id !== id));
+  }, []);
 
-  const handleSaveReflection = (type: Reflection["type"], content: string) => {
+  const handleSaveReflection = useCallback((type: Reflection["type"], content: string) => {
     if (content.trim()) {
       saveReflection({ date: today, type, content: content.trim() });
-      loadData();
+      setReflections(getReflections(today));
     }
-  };
+  }, [today]);
 
-  const getReflectionContent = (type: Reflection["type"]) => {
+  const getReflectionContent = useCallback((type: Reflection["type"]) => {
     return reflections.find((r) => r.type === type)?.content || "";
-  };
+  }, [reflections]);
 
-  const completedCount = priorities.filter((p) => p.completed).length;
+  const completedCount = useMemo(() => priorities.filter((p) => p.completed).length, [priorities]);
 
   return (
     <div className="min-h-screen pb-24">

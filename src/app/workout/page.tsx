@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Workout } from "@/lib/types";
 import {
   getWorkouts,
@@ -34,12 +34,18 @@ type ExerciseEntry = {
 type View = "home" | "log" | "history";
 
 export default function WorkoutPage() {
+  const today = useMemo(() => getTodayDate(), []);
+
   const [view, setView] = useState<View>("home");
-  const [workoutHistory, setWorkoutHistory] = useState<Workout[]>([]);
+  // Lazy state initialization (rule: rerender-lazy-state-init)
+  const [workoutHistory, setWorkoutHistory] = useState<Workout[]>(() => {
+    if (typeof window === "undefined") return [];
+    return getWorkouts(); // Already sorted by toSorted() in storage
+  });
   const [mounted, setMounted] = useState(false);
 
   // Log form state
-  const [workoutDate, setWorkoutDate] = useState(getTodayDate());
+  const [workoutDate, setWorkoutDate] = useState(today);
   const [exercises, setExercises] = useState<ExerciseEntry[]>([]);
   const [currentExercise, setCurrentExercise] = useState({
     name: "",
@@ -48,19 +54,16 @@ export default function WorkoutPage() {
     weight: "",
   });
 
-  const loadData = () => {
-    const workouts = getWorkouts();
-    setWorkoutHistory(workouts.sort((a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    ));
-  };
+  const loadData = useCallback(() => {
+    setWorkoutHistory(getWorkouts()); // Already sorted by toSorted() in storage
+  }, []);
 
   useEffect(() => {
-    loadData();
     setMounted(true);
   }, []);
 
-  const handleAddExercise = () => {
+  // Functional setState for stable callbacks (rule: rerender-functional-setstate)
+  const handleAddExercise = useCallback(() => {
     if (
       currentExercise.name.trim() &&
       parseInt(currentExercise.sets) > 0 &&
@@ -73,14 +76,14 @@ export default function WorkoutPage() {
         reps: parseInt(currentExercise.reps),
         weight: parseFloat(currentExercise.weight) || 0,
       };
-      setExercises([...exercises, newExercise]);
+      setExercises(prev => [...prev, newExercise]);
       setCurrentExercise({ name: "", sets: "", reps: "", weight: "" });
     }
-  };
+  }, [currentExercise]);
 
-  const handleRemoveExercise = (id: string) => {
-    setExercises(exercises.filter((e) => e.id !== id));
-  };
+  const handleRemoveExercise = useCallback((id: string) => {
+    setExercises(prev => prev.filter((e) => e.id !== id));
+  }, []);
 
   const handleSaveWorkout = () => {
     if (exercises.length === 0) return;
@@ -106,19 +109,19 @@ export default function WorkoutPage() {
     loadData();
   };
 
-  const handleDeleteWorkout = (id: string) => {
+  const handleDeleteWorkout = useCallback((id: string) => {
     if (confirm("Delete this workout?")) {
       deleteWorkout(id);
-      loadData();
+      setWorkoutHistory(prev => prev.filter(w => w.id !== id));
     }
-  };
+  }, []);
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setExercises([]);
-    setWorkoutDate(getTodayDate());
+    setWorkoutDate(today);
     setCurrentExercise({ name: "", sets: "", reps: "", weight: "" });
     setView("home");
-  };
+  }, [today]);
 
   return (
     <div className="min-h-screen pb-24">

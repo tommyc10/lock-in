@@ -252,3 +252,9 @@ html.dark body {
 .transition-premium {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Content visibility optimization for long lists (rule: rendering-content-visibility) */
+.content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 80px;
+}

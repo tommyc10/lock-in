@@ -12,6 +12,21 @@ const STORAGE_KEYS = {
   COUNTDOWN_EVENTS: "lockin_countdown_events",
 } as const;
 
+// Storage cache for O(1) repeated reads (rule: js-cache-storage)
+const storageCache = new Map<string, unknown>();
+
+// Invalidate cache on visibility change (external changes from other tabs)
+if (typeof window !== "undefined") {
+  window.addEventListener("storage", (e) => {
+    if (e.key) storageCache.delete(e.key);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      storageCache.clear();
+    }
+  });
+}
+
 // Generate a simple unique ID
 export function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -22,16 +37,26 @@ export function getTodayDate(): string {
   return new Date().toISOString().split("T")[0];
 }
 
-// Generic storage helpers
+// Generic storage helpers with caching
 function getFromStorage<T>(key: string): T[] {
   if (typeof window === "undefined") return [];
+
+  // Check cache first
+  if (storageCache.has(key)) {
+    return storageCache.get(key) as T[];
+  }
+
   const data = localStorage.getItem(key);
-  return data ? JSON.parse(data) : [];
+  const parsed = data ? JSON.parse(data) : [];
+  storageCache.set(key, parsed);
+  return parsed;
 }
 
 function saveToStorage<T>(key: string, data: T[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(key, JSON.stringify(data));
+  // Invalidate cache on write
+  storageCache.delete(key);
 }
 
 // Habits
@@ -255,7 +280,7 @@ export function saveReflection(reflection: Omit<Reflection, "id" | "createdAt">)
 export function getPriorities(date?: string): Priority[] {
   const priorities = getFromStorage<Priority>(STORAGE_KEYS.PRIORITIES);
   if (date) {
-    return priorities.filter((p) => p.date === date).sort((a, b) => a.order - b.order);
+    return priorities.filter((p) => p.date === date).toSorted((a, b) => a.order - b.order);
   }
   return priorities;
 }
@@ -308,10 +333,10 @@ export function getCompletionRate(days: number = 7): number {
     });
 
     totalExpected += dueHabits.length;
-    totalCompleted += completions.filter((c) => {
-      const habit = dueHabits.find((h) => h.id === c.habitId);
-      return habit && c.completed;
-    }).length;
+
+    // Use Set for O(1) lookups instead of O(n²) find() calls
+    const dueHabitIds = new Set(dueHabits.map(h => h.id));
+    totalCompleted += completions.filter(c => dueHabitIds.has(c.habitId) && c.completed).length;
   }
 
   return totalExpected > 0 ? Math.round((totalCompleted / totalExpected) * 100) : 0;
@@ -325,7 +350,7 @@ export function getWorkouts(date?: string): Workout[] {
   if (date) {
     return workouts.filter((w) => w.date === date);
   }
-  return workouts.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
+  return workouts.toSorted((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime());
 }
 
 // Get a single workout by ID
@@ -453,7 +478,7 @@ export function removeExercise(workoutId: string, exerciseId: string): void {
 
 export function getSavedExercises(): SavedExercise[] {
   return getFromStorage<SavedExercise>(STORAGE_KEYS.SAVED_EXERCISES)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .toSorted((a, b) => a.name.localeCompare(b.name));
 }
 
 export function saveExerciseToLibrary(name: string): SavedExercise {
@@ -523,9 +548,9 @@ export function getWorkoutStats(days: number = 30): { totalWorkouts: number; tot
 export function getVisionItems(category?: VisionCategory): VisionItem[] {
   const items = getFromStorage<VisionItem>(STORAGE_KEYS.VISION_BOARD);
   if (category) {
-    return items.filter((item) => item.category === category).sort((a, b) => a.order - b.order);
+    return items.filter((item) => item.category === category).toSorted((a, b) => a.order - b.order);
   }
-  return items.sort((a, b) => a.order - b.order);
+  return items.toSorted((a, b) => a.order - b.order);
 }
 
 export function saveVisionItem(item: Omit<VisionItem, "id" | "createdAt" | "order">): VisionItem {
@@ -571,7 +596,7 @@ export function reorderVisionItems(category: VisionCategory, itemIds: string[]):
 
 export function getCountdownEvents(): CountdownEvent[] {
   return getFromStorage<CountdownEvent>(STORAGE_KEYS.COUNTDOWN_EVENTS)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    .toSorted((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 export function getUpcomingEvents(): CountdownEvent[] {
@@ -626,7 +651,7 @@ export function getCurrentStreak(): number {
 
   const today = getTodayDate();
   let streak = 0;
-  let checkDate = new Date(today);
+  const checkDate = new Date(today);
 
   // Check if today is complete - if not, start from yesterday
   const todayDueHabits = habits.filter((h) => {
@@ -634,10 +659,10 @@ export function getCurrentStreak(): number {
     return isHabitDueOnDate(h, today);
   });
   const todayCompletions = getCompletions(today);
-  const todayCompleted = todayCompletions.filter((c) => {
-    const habit = todayDueHabits.find((h) => h.id === c.habitId);
-    return habit && c.completed;
-  }).length;
+
+  // Use Set for O(1) lookups instead of O(n²) find() calls
+  const todayDueIds = new Set(todayDueHabits.map(h => h.id));
+  const todayCompleted = todayCompletions.filter(c => todayDueIds.has(c.habitId) && c.completed).length;
   const todayRate = todayDueHabits.length > 0 ? todayCompleted / todayDueHabits.length : 0;
 
   if (todayRate < 0.8) {
@@ -664,10 +689,9 @@ export function getCurrentStreak(): number {
       continue;
     }
 
-    const completed = completions.filter((c) => {
-      const habit = dueHabitsOnDate.find((h) => h.id === c.habitId);
-      return habit && c.completed;
-    }).length;
+    // Use Set for O(1) lookups
+    const dueIds = new Set(dueHabitsOnDate.map(h => h.id));
+    const completed = completions.filter(c => dueIds.has(c.habitId) && c.completed).length;
     const rate = completed / dueHabitsOnDate.length;
 
     if (rate >= 0.8) {
@@ -691,7 +715,7 @@ export function getHabitStreak(habitId: string): number {
 
   const today = getTodayDate();
   let streak = 0;
-  let checkDate = new Date(today);
+  const checkDate = new Date(today);
 
   // Check if today is complete for this habit
   const todayComplete = isHabitCompleted(habitId, today);
@@ -732,7 +756,7 @@ export function getLongestStreak(): number {
 
   let longestStreak = 0;
   let currentStreak = 0;
-  let checkDate = new Date(earliestDate);
+  const checkDate = new Date(earliestDate);
   const today = new Date(getTodayDate());
 
   while (checkDate <= today) {
@@ -751,10 +775,9 @@ export function getLongestStreak(): number {
       continue;
     }
 
-    const completed = completions.filter((c) => {
-      const habit = dueHabitsOnDate.find((h) => h.id === c.habitId);
-      return habit && c.completed;
-    }).length;
+    // Use Set for O(1) lookups
+    const dueIds = new Set(dueHabitsOnDate.map(h => h.id));
+    const completed = completions.filter(c => dueIds.has(c.habitId) && c.completed).length;
     const rate = completed / dueHabitsOnDate.length;
 
     if (rate >= 0.8) {

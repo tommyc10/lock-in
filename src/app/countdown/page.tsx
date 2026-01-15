@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { CountdownEvent, EVENT_CATEGORIES, VISION_CATEGORIES, VisionCategory } from "@/lib/types";
 import {
-  getUpcomingEvents,
   getCountdownEvents,
   saveCountdownEvent,
   deleteCountdownEvent,
@@ -25,13 +24,18 @@ import {
   Target,
   Upload,
   Link as LinkIcon,
-  Image as ImageIcon,
 } from "lucide-react";
 
 type ImageMode = "url" | "upload" | null;
 
 export default function CountdownPage() {
-  const [events, setEvents] = useState<CountdownEvent[]>([]);
+  const today = useMemo(() => getTodayDate(), []);
+
+  // Lazy state initialization (rule: rerender-lazy-state-init)
+  const [events, setEvents] = useState<CountdownEvent[]>(() => {
+    if (typeof window === "undefined") return [];
+    return getCountdownEvents();
+  });
   const [showAddForm, setShowAddForm] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -46,19 +50,15 @@ export default function CountdownPage() {
   const [imageData, setImageData] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadData = () => {
-    setEvents(getCountdownEvents());
-  };
-
   useEffect(() => {
-    loadData();
     setMounted(true);
   }, []);
 
-  const upcomingEvents = events.filter((e) => e.date >= getTodayDate());
-  const pastEvents = events.filter((e) => e.date < getTodayDate());
+  // Memoize filtered events (rule: rerender-memo)
+  const upcomingEvents = useMemo(() => events.filter((e) => e.date >= today), [events, today]);
+  const pastEvents = useMemo(() => events.filter((e) => e.date < today), [events, today]);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -68,9 +68,21 @@ export default function CountdownPage() {
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
-  const handleAddEvent = () => {
+  const resetForm = useCallback(() => {
+    setName("");
+    setDate("");
+    setCategory("social");
+    setNote("");
+    setFocusAreas([]);
+    setImageUrl("");
+    setImageData(null);
+    setImageMode(null);
+    setShowAddForm(false);
+  }, []);
+
+  const handleAddEvent = useCallback(() => {
     if (name.trim() && date) {
       saveCountdownEvent({
         name: name.trim(),
@@ -82,36 +94,26 @@ export default function CountdownPage() {
         focusAreas,
       });
       resetForm();
-      loadData();
+      setEvents(getCountdownEvents());
     }
-  };
+  }, [name, date, category, note, imageUrl, imageData, focusAreas, resetForm]);
 
-  const handleDelete = (id: string) => {
+  // Functional setState for stable callback (rule: rerender-functional-setstate)
+  const handleDelete = useCallback((id: string) => {
     if (confirm("Delete this event?")) {
       deleteCountdownEvent(id);
-      loadData();
+      setEvents(prev => prev.filter(e => e.id !== id));
     }
-  };
+  }, []);
 
-  const resetForm = () => {
-    setName("");
-    setDate("");
-    setCategory("social");
-    setNote("");
-    setFocusAreas([]);
-    setImageUrl("");
-    setImageData(null);
-    setImageMode(null);
-    setShowAddForm(false);
-  };
-
-  const toggleFocusArea = (area: VisionCategory) => {
-    if (focusAreas.includes(area)) {
-      setFocusAreas(focusAreas.filter((a) => a !== area));
-    } else {
-      setFocusAreas([...focusAreas, area]);
-    }
-  };
+  // Functional setState for toggleFocusArea (rule: rerender-functional-setstate)
+  const toggleFocusArea = useCallback((area: VisionCategory) => {
+    setFocusAreas(prev =>
+      prev.includes(area)
+        ? prev.filter((a) => a !== area)
+        : [...prev, area]
+    );
+  }, []);
 
   const getCategoryEmoji = (cat: CountdownEvent["category"]) => {
     return EVENT_CATEGORIES.find((c) => c.value === cat)?.emoji || "📅";
