@@ -33,31 +33,33 @@ export function Header() {
   const { theme, toggleTheme } = useTheme();
 
   return (
-    <header className="bg-card/80 backdrop-blur-sm sticky top-0 z-40 border-b border-border/50">
-      <div className="max-w-3xl mx-auto px-6 py-5">
+    <header className="bg-card/90 backdrop-blur-xl sticky top-0 z-40 border-b border-border/50 shadow-[0_1px_3px_oklch(0_0_0/0.05)]">
+      <div className="max-w-3xl mx-auto px-6 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            <h1 className="text-3xl font-semibold tracking-tight text-foreground" style={{ fontFamily: 'var(--font-display)' }}>
               Lock In
             </h1>
-            <p className="text-muted-foreground text-sm mt-0.5">{formatDate(today)}</p>
+            <p className="text-muted-foreground text-sm mt-1">
+              {formatDate(today)}
+            </p>
           </div>
           <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-medium text-foreground">{greeting}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{message}</p>
+            </div>
             <button
               onClick={toggleTheme}
-              className="w-10 h-10 rounded-xl bg-muted/50 hover:bg-muted flex items-center justify-center transition-all hover:scale-105 active:scale-95"
+              className="w-10 h-10 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-all duration-300 hover:scale-105"
               aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
             >
               {theme === "light" ? (
-                <Moon className="w-5 h-5 text-muted-foreground" />
+                <Moon className="w-4 h-4 text-muted-foreground" />
               ) : (
-                <Sun className="w-5 h-5 text-amber-400" />
+                <Sun className="w-4 h-4 text-accent" />
               )}
             </button>
-            <div className="text-right">
-              <p className="text-base font-medium text-foreground">{greeting}</p>
-              <p className="text-sm text-muted-foreground">{message}</p>
-            </div>
           </div>
         </div>
       </div>

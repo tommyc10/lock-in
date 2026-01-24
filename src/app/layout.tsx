@@ -1,13 +1,23 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Cormorant, DM_Sans } from "next/font/google";
 import "./globals.css";
 import { Navigation } from "@/components/layout/Navigation";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 
-const inter = Inter({
-  variable: "--font-inter",
+// Elegant serif for display and headings
+const cormorant = Cormorant({
+  variable: "--font-display",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+// Clean modern sans-serif for body and UI
+const dmSans = DM_Sans({
+  variable: "--font-sans",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -38,7 +48,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} antialiased`}>
+      <body className={`${dmSans.variable} ${cormorant.variable} antialiased`}>
         <ThemeProvider>
           {children}
           <Navigation />

@@ -90,26 +90,29 @@ export default function Home() {
       <main className="max-w-3xl mx-auto px-6 py-8">
         {/* Countdown Widget */}
         {nextEvent && (
-          <Link href="/countdown" className="block mb-6">
-            <Card className={`bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20 hover:border-primary/30 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 ${mounted ? "animate-fade-in" : "opacity-0"}`}>
-              <CardContent className="py-5">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/20 flex flex-col items-center justify-center">
-                    <span className="text-2xl font-bold text-primary">{getDaysUntil(nextEvent.date)}</span>
-                    <span className="text-[10px] text-primary/80 font-semibold tracking-wide">DAYS</span>
+          <Link href="/countdown" className="block mb-8">
+            <Card className={`relative overflow-hidden card-premium hover:shadow-lg group ${mounted ? "animate-fade-in" : "opacity-0"}`}>
+              <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl" />
+              <CardContent className="py-6 relative">
+                <div className="flex items-center gap-5">
+                  <div className="relative">
+                    <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-primary/10 to-accent/5 flex flex-col items-center justify-center">
+                      <span className="text-3xl font-semibold text-primary metric-display" style={{ fontFamily: 'var(--font-display)' }}>{getDaysUntil(nextEvent.date)}</span>
+                      <span className="text-xs text-muted-foreground font-medium">days</span>
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-accent flex items-center justify-center">
+                      <span className="text-sm">{EVENT_CATEGORIES.find(c => c.value === nextEvent.category)?.emoji}</span>
+                    </div>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{EVENT_CATEGORIES.find(c => c.value === nextEvent.category)?.emoji}</span>
-                      <h3 className="font-semibold text-lg truncate">{nextEvent.name}</h3>
-                    </div>
+                    <h3 className="font-semibold text-lg truncate" style={{ fontFamily: 'var(--font-display)' }}>{nextEvent.name}</h3>
                     {nextEvent.focusAreas.length > 0 && (
                       <p className="text-sm text-muted-foreground mt-1">
-                        Focus: {nextEvent.focusAreas.map(a => VISION_CATEGORIES.find(c => c.value === a)?.label).join(", ")}
+                        {nextEvent.focusAreas.map(a => VISION_CATEGORIES.find(c => c.value === a)?.label).join(", ")}
                       </p>
                     )}
                   </div>
-                  <ChevronRight className="w-5 h-5 text-primary flex-shrink-0" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all shrink-0" />
                 </div>
               </CardContent>
             </Card>
@@ -117,37 +120,40 @@ export default function Home() {
         )}
 
         {/* Today's Progress */}
-        <div className={`mb-8 ${mounted ? "animate-fade-in animate-fade-in-delay-1" : "opacity-0"}`}>
-          <Card className="overflow-hidden">
-            <CardContent className="py-6">
-              <div className="flex items-start justify-between mb-4">
-                <h3 className="font-semibold text-lg text-muted-foreground">Today&apos;s Progress</h3>
+        <div className={`mb-10 ${mounted ? "animate-fade-in animate-fade-in-delay-1" : "opacity-0"}`}>
+          <Card className="overflow-hidden card-premium relative">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl" />
+            <CardContent className="py-8 relative">
+              <div className="flex items-start justify-between mb-6">
+                <h3 className="font-semibold text-xl text-muted-foreground" style={{ fontFamily: 'var(--font-display)' }}>Today&apos;s Progress</h3>
                 {todayStats.total > 0 && (
-                  <span className="text-sm font-medium text-primary">{progressPercent}%</span>
+                  <span className="text-2xl font-semibold text-primary metric-display">{progressPercent}%</span>
                 )}
               </div>
 
-              {/* Progress bar */}
+              {/* Progress bar - elegant style */}
               {todayStats.total > 0 && (
-                <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
+                <div className="h-2 bg-muted rounded-full overflow-hidden mb-8 relative">
                   <div
-                    className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500"
+                    className="h-full bg-linear-to-r from-primary to-accent rounded-full transition-all duration-700 relative"
                     style={{ width: `${progressPercent}%` }}
-                  />
+                  >
+                    <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+                  </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-end justify-between">
                 <div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-4xl font-bold tracking-tight">{todayStats.completed}</span>
-                    <span className="text-xl text-muted-foreground/60">/ {todayStats.total}</span>
-                    <span className="text-sm text-muted-foreground ml-1">habits</span>
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-5xl font-semibold tracking-tight metric-display" style={{ fontFamily: 'var(--font-display)' }}>{todayStats.completed}</span>
+                    <span className="text-3xl text-muted-foreground font-normal" style={{ fontFamily: 'var(--font-display)' }}>/ {todayStats.total}</span>
                   </div>
+                  <span className="text-sm text-muted-foreground mt-2 block">habits completed</span>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-semibold text-muted-foreground">{weeklyWorkouts}</p>
-                  <p className="text-xs text-muted-foreground/70">workouts this week</p>
+                <div className="text-right bg-accent/5 px-6 py-4 rounded-2xl border border-accent/10">
+                  <p className="text-3xl font-semibold text-accent metric-display" style={{ fontFamily: 'var(--font-display)' }}>{weeklyWorkouts}</p>
+                  <p className="text-xs text-muted-foreground mt-1">workouts this week</p>
                 </div>
               </div>
             </CardContent>
@@ -157,16 +163,17 @@ export default function Home() {
         {/* Quick Links */}
         <div className={`flex flex-col gap-4 ${mounted ? "animate-fade-in animate-fade-in-delay-2" : "opacity-0"}`}>
           {/* Habits Link */}
-          <Link href="/habits" className="block">
-            <Card className="group hover:bg-muted/30 transition-all duration-200 hover:shadow-md">
-              <CardContent className="py-5">
-                <div className="flex items-center justify-between">
+          <Link href="/habits" className="block group">
+            <Card className="card-premium group-hover:shadow-lg">
+              <CardContent className="py-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
+                <div className="flex items-center justify-between relative">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-colors">
+                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/15 transition-all">
                       <Target className="w-6 h-6 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-base">Habits</h3>
+                      <h3 className="font-semibold text-lg" style={{ fontFamily: 'var(--font-display)' }}>Habits</h3>
                       <p className="text-sm text-muted-foreground mt-0.5">
                         {todayStats.total === 0
                           ? "Set up your daily habits"
@@ -174,23 +181,24 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground/50 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
                 </div>
               </CardContent>
             </Card>
           </Link>
 
           {/* Workout Link */}
-          <Link href="/workout" className="block">
-            <Card className="group hover:bg-muted/30 transition-all duration-200 hover:shadow-md">
-              <CardContent className="py-5">
-                <div className="flex items-center justify-between">
+          <Link href="/workout" className="block group">
+            <Card className="card-premium group-hover:shadow-lg">
+              <CardContent className="py-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl" />
+                <div className="flex items-center justify-between relative">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center group-hover:bg-amber-500/15 transition-colors">
-                      <Dumbbell className="w-6 h-6 text-amber-500" />
+                    <div className="w-14 h-14 rounded-2xl bg-accent/10 flex items-center justify-center group-hover:bg-accent/15 transition-all">
+                      <Dumbbell className="w-6 h-6 text-accent" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-base">Workout</h3>
+                      <h3 className="font-semibold text-lg" style={{ fontFamily: 'var(--font-display)' }}>Workout</h3>
                       <p className="text-sm text-muted-foreground mt-0.5">
                         {weeklyWorkouts === 0
                           ? "Start your first workout"
@@ -198,23 +206,24 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground/50 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
                 </div>
               </CardContent>
             </Card>
           </Link>
 
           {/* Reflection Link */}
-          <Link href="/reflection" className="block">
-            <Card className="group hover:bg-muted/30 transition-all duration-200 hover:shadow-md">
-              <CardContent className="py-5">
-                <div className="flex items-center justify-between">
+          <Link href="/reflection" className="block group">
+            <Card className="card-premium group-hover:shadow-lg">
+              <CardContent className="py-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-destructive/5 rounded-full blur-3xl" />
+                <div className="flex items-center justify-between relative">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-violet-500/10 flex items-center justify-center group-hover:bg-violet-500/15 transition-colors">
-                      <Moon className="w-6 h-6 text-violet-500" />
+                    <div className="w-14 h-14 rounded-2xl bg-destructive/10 flex items-center justify-center group-hover:bg-destructive/15 transition-all">
+                      <Moon className="w-6 h-6 text-destructive" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-base">Reflection</h3>
+                      <h3 className="font-semibold text-lg" style={{ fontFamily: 'var(--font-display)' }}>Reflection</h3>
                       <p className="text-sm text-muted-foreground mt-0.5">
                         {priorities.length === 0 && reflectionsCount === 0
                           ? "Set priorities & reflect"
@@ -224,11 +233,11 @@ export default function Home() {
                   </div>
                   <div className="flex items-center gap-3">
                     {reflectionsCount > 0 && (
-                      <span className="text-xs text-success font-medium bg-success/10 px-2.5 py-1 rounded-full">
+                      <span className="text-xs text-success font-medium bg-success/10 px-3 py-1 rounded-full">
                         Reflected
                       </span>
                     )}
-                    <ChevronRight className="w-5 h-5 text-muted-foreground/50 group-hover:text-muted-foreground group-hover:translate-x-0.5 transition-all" />
+                    <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>
               </CardContent>
@@ -237,10 +246,13 @@ export default function Home() {
         </div>
 
         {/* Motivation Quote */}
-        <div className={`mt-12 text-center ${mounted ? "animate-fade-in animate-fade-in-delay-3" : "opacity-0"}`}>
-          <p className="text-sm text-muted-foreground/60 italic">
-            &ldquo;Small daily improvements over time lead to stunning results.&rdquo;
-          </p>
+        <div className={`mt-16 relative ${mounted ? "animate-fade-in animate-fade-in-delay-3" : "opacity-0"}`}>
+          <div className="relative text-center px-8 py-12">
+            <div className="absolute inset-0 bg-linear-to-r from-transparent via-primary/5 to-transparent rounded-3xl" />
+            <p className="text-lg text-foreground/80 font-medium italic relative" style={{ fontFamily: 'var(--font-display)' }}>
+              &ldquo;Small daily improvements over time lead to stunning results.&rdquo;
+            </p>
+          </div>
         </div>
       </main>
     </div>
