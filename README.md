@@ -2,8 +2,6 @@
 
 A refined productivity app for building better habits and tracking daily progress.
 
-**[View Live Demo](https://lock-in-jade.vercel.app)**
-
 ---
 
 ## Features
@@ -24,8 +22,6 @@ cd lock-in
 npm install
 npm run dev
 ```
-
-Open [localhost:3000](http://localhost:3000)
 
 ---
 
