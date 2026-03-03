@@ -135,6 +135,13 @@ export const EVENT_CATEGORIES: { value: EventCategory; label: string; emoji: str
   { value: "other", label: "Other", emoji: "📅" },
 ];
 
+// Water tracking
+export interface WaterLog {
+  date: string; // YYYY-MM-DD
+  glasses: number;
+  target: number;
+}
+
 export const HABIT_TEMPLATES: HabitTemplate[] = [
   // Morning
   { name: "Drink water", timeOfDay: "morning", category: "Health" },
