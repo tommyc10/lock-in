@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { Habit } from "@/lib/types";
-import { isHabitCompleted, toggleCompletion, getTodayDate, isHabitDueOnDate, getWeeklyCompletionCount } from "@/lib/storage";
+import { isHabitCompleted, toggleCompletion, getTodayDate, isHabitDueOnDate, getWeeklyCompletionCount, getHabitStreak } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, Check, Calendar, Repeat } from "lucide-react";
+import { Pencil, Trash2, Check, Calendar, Repeat, Flame } from "lucide-react";
 
 interface HabitItemProps {
   habit: Habit;
@@ -44,6 +44,9 @@ export function HabitItem({ habit, onToggle, onEdit, onDelete }: HabitItemProps)
   const weeklyProgress = habit.frequency === "weekly" && habit.weeklyTarget
     ? getWeeklyCompletionCount(habit.id, today)
     : null;
+
+  // Per-habit streak (show badge when >= 3 days)
+  const habitStreak = getHabitStreak(habit.id);
 
   const handleToggle = () => {
     toggleCompletion(habit.id, today);
@@ -86,13 +89,21 @@ export function HabitItem({ habit, onToggle, onEdit, onDelete }: HabitItemProps)
       </button>
 
       <div className="flex-1 min-w-0">
-        <span
-          className={`text-sm font-medium transition-all duration-200 block ${
-            completed ? "text-success line-through" : "text-foreground"
-          }`}
-        >
-          {habit.name}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={`text-sm font-medium transition-all duration-200 ${
+              completed ? "text-success line-through" : "text-foreground"
+            }`}
+          >
+            {habit.name}
+          </span>
+          {habitStreak >= 3 && (
+            <span className="flex items-center gap-0.5 text-xs font-medium text-accent bg-accent/10 px-1.5 py-0.5 rounded-full">
+              <Flame className="w-3 h-3" />
+              {habitStreak}d
+            </span>
+          )}
+        </div>
         {frequencyLabel && (
           <div className="flex items-center gap-1 mt-0.5">
             {habit.frequency === "weekly" ? (

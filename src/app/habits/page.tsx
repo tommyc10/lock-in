@@ -10,28 +10,21 @@ import {
   getMissedHabitsYesterday,
   hasRecoveryForHabit,
   getTodayDate,
-  getCompletions,
-  getDueHabits,
 } from "@/lib/storage";
+import { computeTodayStats } from "@/lib/stats";
+import { useRefreshOnFocus } from "@/hooks/useRefreshOnFocus";
 import { Header } from "@/components/layout/Header";
 import { HabitList } from "@/components/habits/HabitList";
 import { HabitForm } from "@/components/habits/HabitForm";
 import { RecoveryModal, RecoveryBanner } from "@/components/habits/RecoveryModal";
+import { StreakDisplay } from "@/components/streaks/StreakDisplay";
+import { CompletionCelebration, shouldShowCelebration } from "@/components/celebrations/CompletionCelebration";
+import { ProgressRing } from "@/components/ui/ProgressRing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, CheckCircle2, Circle } from "lucide-react";
+import { Plus } from "lucide-react";
 
 type View = "list" | "add" | "edit";
-
-// Helper to compute today's stats with O(1) lookups
-function computeTodayStats(today: string) {
-  const dueHabits = getDueHabits(today);
-  const completions = getCompletions(today);
-  // Use Set for O(1) lookups instead of O(n²) find() calls
-  const dueHabitIds = new Set(dueHabits.map(h => h.id));
-  const completed = completions.filter(c => dueHabitIds.has(c.habitId) && c.completed).length;
-  return { completed, total: dueHabits.length };
-}
 
 // Helper to get missed habits that need recovery
 function getMissedHabitsNeedingRecovery() {
@@ -63,11 +56,21 @@ export default function HabitsPage() {
     return computeTodayStats(today);
   });
 
+  const [showCelebration, setShowCelebration] = useState(false);
+
   const loadData = useCallback(() => {
     setHabits(getHabits());
-    setTodayStats(computeTodayStats(today));
+    const stats = computeTodayStats(today);
+    setTodayStats(stats);
     setMissedHabits(getMissedHabitsNeedingRecovery());
+
+    // Check if all habits are done for celebration
+    if (shouldShowCelebration(stats.completed, stats.total)) {
+      setShowCelebration(true);
+    }
   }, [today]);
+
+  useRefreshOnFocus(loadData);
 
   useEffect(() => {
     setMounted(true);
@@ -142,15 +145,27 @@ export default function HabitsPage() {
           />
         )}
 
+        {/* Streak Display */}
+        <Card className={`mb-4 card-premium ${mounted ? "animate-fade-in" : "opacity-0"}`}>
+          <CardContent className="py-4">
+            <StreakDisplay compact />
+          </CardContent>
+        </Card>
+
         {/* Today's Progress */}
-        <Card className={`mb-6 ${mounted ? "animate-fade-in" : "opacity-0"}`}>
-          <CardContent className="pt-6">
+        <Card className={`mb-6 card-premium ${mounted ? "animate-fade-in" : "opacity-0"}`}>
+          <CardContent className="py-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Today&apos;s Progress</p>
-                <p className="text-4xl font-bold tracking-tight mt-1">
-                  {todayStats.completed}/{todayStats.total}
-                </p>
+                <div className="flex items-baseline gap-3 mt-1">
+                  <span className="text-4xl font-semibold tracking-tight metric-display" style={{ fontFamily: 'var(--font-display)' }}>
+                    {todayStats.completed}
+                  </span>
+                  <span className="text-2xl text-muted-foreground font-normal" style={{ fontFamily: 'var(--font-display)' }}>
+                    / {todayStats.total}
+                  </span>
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {progressPercent === 100
                     ? "All done! Great work"
@@ -159,15 +174,9 @@ export default function HabitsPage() {
                     : "Let's get started"}
                 </p>
               </div>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: todayStats.total }).map((_, i) => (
-                  i < todayStats.completed ? (
-                    <CheckCircle2 key={i} className="w-6 h-6 text-success" />
-                  ) : (
-                    <Circle key={i} className="w-6 h-6 text-muted" />
-                  )
-                ))}
-              </div>
+              <ProgressRing percent={progressPercent} size={72} strokeWidth={6}>
+                <span className="text-sm font-semibold text-primary metric-display">{progressPercent}%</span>
+              </ProgressRing>
             </div>
           </CardContent>
         </Card>
@@ -229,6 +238,11 @@ export default function HabitsPage() {
             }
           }}
         />
+      )}
+
+      {/* Celebration overlay */}
+      {showCelebration && (
+        <CompletionCelebration onDismiss={() => setShowCelebration(false)} />
       )}
     </div>
   );

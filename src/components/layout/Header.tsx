@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { getTodayDate } from "@/lib/storage";
 import { useTheme } from "@/components/providers/ThemeProvider";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Settings } from "lucide-react";
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr + "T00:00:00");
@@ -60,6 +61,13 @@ export function Header() {
                 <Sun className="w-4 h-4 text-accent" />
               )}
             </button>
+            <Link
+              href="/settings"
+              className="w-10 h-10 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center transition-all duration-300 hover:scale-105"
+              aria-label="Settings"
+            >
+              <Settings className="w-4 h-4 text-muted-foreground" />
+            </Link>
           </div>
         </div>
       </div>

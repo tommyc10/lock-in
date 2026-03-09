@@ -1,5 +1,5 @@
 import { HabitCompletion } from "../types";
-import { STORAGE_KEYS, getFromStorage, saveToStorage, getTodayDate } from "./core";
+import { STORAGE_KEYS, getFromStorage, saveToStorage } from "./core";
 
 export function getCompletions(date?: string): HabitCompletion[] {
   const completions = getFromStorage<HabitCompletion>(STORAGE_KEYS.COMPLETIONS);

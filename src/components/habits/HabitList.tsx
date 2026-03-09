@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { Habit, TimeOfDay } from "@/lib/types";
+import { Habit, TimeOfDay, HABIT_TEMPLATES } from "@/lib/types";
 import { HabitItem } from "./HabitItem";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card";
-import { Sunrise, Sun, Moon, ListChecks } from "lucide-react";
+import { Sunrise, Sun, Moon, Sparkles } from "lucide-react";
 
 interface HabitListProps {
   habits: Habit[];
@@ -34,14 +34,26 @@ export function HabitList({ habits, onToggle, onEdit, onDelete }: HabitListProps
 
   if (habits.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12">
+      <Card className="card-premium">
+        <CardContent className="py-10">
           <div className="text-center">
-            <ListChecks className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="text-muted-foreground font-medium">No habits yet</p>
-            <p className="text-sm text-muted-foreground/70 mt-1">
-              Add your first habit to start building consistency
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Sparkles className="w-8 h-8 text-primary" />
+            </div>
+            <h3 className="font-semibold text-lg mb-1" style={{ fontFamily: 'var(--font-display)' }}>Build Your Routine</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Start with a few habits and build from there
             </p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {HABIT_TEMPLATES.slice(0, 6).map((t) => (
+                <span
+                  key={t.name}
+                  className="text-xs px-3 py-1.5 rounded-full bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors cursor-default"
+                >
+                  {t.name}
+                </span>
+              ))}
+            </div>
           </div>
         </CardContent>
       </Card>

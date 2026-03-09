@@ -408,3 +408,58 @@ html.dark body::after {
   content-visibility: auto;
   contain-intrinsic-size: 0 80px;
 }
+
+/* Confetti animation for completion celebration */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-20px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.confetti-particle {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  top: -10px;
+  animation: confetti-fall linear forwards;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-slide-left,
+  .animate-slide-right,
+  .animate-fade-in-delay-1,
+  .animate-fade-in-delay-2,
+  .animate-fade-in-delay-3,
+  .animate-fade-in-delay-4 {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .check-animation {
+    animation: none !important;
+  }
+
+  .progress-ring-animated {
+    animation: none !important;
+  }
+
+  .confetti-particle {
+    animation: none !important;
+    display: none;
+  }
+
+  .card-premium:hover {
+    transform: none;
+  }
+
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
